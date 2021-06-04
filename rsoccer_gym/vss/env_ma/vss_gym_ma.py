@@ -179,30 +179,30 @@ class VSSMAEnv(VSSBaseEnv):
         return commands
 
     def _calculate_reward_and_done(self):
-        reward = {f'robot_{i}': 0 for i in range(self.n_robots_control)}
+        reward = [0 for _ in range(self.n_robots_control)]
         goal = False
         w_move = 0.2
         w_ball_grad = 0.8
         w_energy = 2e-4
         if self.reward_shaping_total is None:
             self.reward_shaping_total = {'goal_score': 0, 'ball_grad': 0,
-                                         'goals_blue': 0, 'goals_yellow': 0}
+                                         'move': 0, 'goals_blue': 0,
+                                         'goals_yellow': 0}
             for i in range(self.n_robots_control):
-                self.reward_shaping_total[f'robot_{i}'] = {
-                    'move': 0, 'energy': 0}
+                self.reward_shaping_total[f'robot_{i}'] = {'energy': 0}
 
         # Check if goal ocurred
         if self.frame.ball.x > (self.field.length / 2):
             self.reward_shaping_total['goal_score'] += 1
             self.reward_shaping_total['goals_blue'] += 1
             for i in range(self.n_robots_control):
-                reward[f'robot_{i}'] = 10
+                reward[i] = 10
             goal = True
         elif self.frame.ball.x < -(self.field.length / 2):
             self.reward_shaping_total['goal_score'] -= 1
             self.reward_shaping_total['goals_yellow'] += 1
             for i in range(self.n_robots_control):
-                reward[f'robot_{i}'] = -10
+                reward[i] = -10
             goal = True
         else:
 
@@ -210,9 +210,10 @@ class VSSMAEnv(VSSBaseEnv):
                 # Calculate ball potential
                 grad_ball_potential = self._ball_grad()
                 self.reward_shaping_total['ball_grad'] += w_ball_grad * grad_ball_potential  # noqa
+                # Calculate Move ball
+                move_reward = self._move_reward()
+                self.reward_shaping_total['move'] += w_move * move_reward  # noqa
                 for idx in range(self.n_robots_control):
-                    # Calculate Move ball
-                    move_reward = self._move_reward(robot_idx=idx)
                     # Calculate Energy penalty
                     energy_penalty = self._energy_penalty(robot_idx=idx)
 
@@ -220,8 +221,7 @@ class VSSMAEnv(VSSBaseEnv):
                         w_move * move_reward + \
                         w_energy * energy_penalty
 
-                    reward[f'robot_{idx}'] += rew
-                    self.reward_shaping_total[f'robot_{idx}']['move'] += w_move * move_reward  # noqa
+                    reward[idx] += rew
                     self.reward_shaping_total[f'robot_{idx}']['energy'] += w_energy * energy_penalty  # noqa
 
         return reward, goal
@@ -317,8 +317,20 @@ class VSSMAEnv(VSSBaseEnv):
         self.previous_ball_potential = ball_potential
 
         return grad_ball_potential
+    
+    def closest_to_ball(self):
+        ball = np.array([self.frame.ball.x, self.frame.ball.y])
+        closest = 0
+        closest_dist = 100000
+        for i, robot in self.frame.robots_blue.items():
+            pos = np.array([robot.x, robot.y])
+            dist = np.linalg.norm(ball - pos)
+            if dist < closest_dist:
+                closest_dist = dist
+                closest = i
+        return closest
 
-    def _move_reward(self, robot_idx: int):
+    def _move_reward(self):
         '''Calculate Move to ball reward
 
         Cosine between the robot vel vector and the vector robot -> ball.
@@ -326,6 +338,7 @@ class VSSMAEnv(VSSBaseEnv):
         '''
 
         ball = np.array([self.frame.ball.x, self.frame.ball.y])
+        robot_idx = self.closest_to_ball()
         robot = np.array([self.frame.robots_blue[robot_idx].x,
                           self.frame.robots_blue[robot_idx].y])
         robot_vel = np.array([self.frame.robots_blue[robot_idx].v_x,

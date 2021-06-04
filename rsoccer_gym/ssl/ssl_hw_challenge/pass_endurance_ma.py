@@ -63,6 +63,7 @@ class SSLPassEnduranceMAEnv(SSLBaseEnv):
         self.max_v = 2.5
         self.max_w = 10
         self.max_kick_x = 5.0
+        self.n = 2
 
         print('Environment initialized')
 
@@ -163,7 +164,7 @@ class SSLPassEnduranceMAEnv(SSLBaseEnv):
     def _calculate_reward_and_done(self):
         w_ball_grad = 1/self.ball_grad_scale
         w_energy = 1/self.energy_scale
-        reward = {f'robot_{i}': 0 for i in range(self.n_robots_blue)}
+        reward = [0 for i in range(self.n_robots_blue)]
         done = False
         if self.reward_shaping_total is None:
             self.reward_shaping_total = {'n_passes': 0,
@@ -173,24 +174,24 @@ class SSLPassEnduranceMAEnv(SSLBaseEnv):
 
         if self.frame.robots_blue[self.receiver_id].infrared:
             for i in range(self.n_robots_blue):
-                reward[f'robot_{i}'] = 10
+                reward[i] = 10
             self.reward_shaping_total['n_passes'] += 1
             self.stopped_steps = 0
             self.shooter_id, self.receiver_id = self.receiver_id, self.shooter_id
         else:
             rw_ball_grad = w_ball_grad * self.__ball_grad_rw()
-            reward[f'robot_{self.shooter_id}'] += rw_ball_grad
-            reward[f'robot_{self.receiver_id}'] += rw_ball_grad
+            reward[self.shooter_id] += rw_ball_grad
+            reward[self.receiver_id] += rw_ball_grad
             self.reward_shaping_total['ball_grad'] += rw_ball_grad
 
             for i in range(self.n_robots_blue):
                 rw_energy = w_energy*self.__energy_pen(i)
-                reward[f'robot_{i}'] += rw_energy
+                reward[i] += rw_energy
                 self.reward_shaping_total[f'robot_{i}']['energy'] += rw_energy
 
         if self.__bad_state():
             for i in range(self.n_robots_blue):
-                reward[f'robot_{i}'] = -1
+                reward[i] = -1
             done = True
         return reward, done
 

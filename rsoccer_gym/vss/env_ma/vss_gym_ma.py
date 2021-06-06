@@ -218,7 +218,7 @@ class VSSMAEnv(VSSBaseEnv):
                 # Calculate ball potential
                 grad_ball_potential = self._ball_grad()
                 self.reward_shaping_total['ball_grad'] += w_ball_grad * grad_ball_potential  # noqa
-                for idx in range(self.n_robots_control):
+                for idx in range(self.n_robots_blue):
                     # Calculate Energy penalty
                     energy_penalty = self._energy_penalty(robot_idx=idx)
                     # Calculate Move ball

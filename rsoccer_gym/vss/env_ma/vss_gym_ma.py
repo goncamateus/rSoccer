@@ -76,7 +76,7 @@ class VSSMAEnv(VSSBaseEnv):
         self.actions: Dict = None
         self.reward_shaping_total = None
         self.v_wheel_deadzone = 0.05
-        
+
         self.ou_actions = []
         for i in range(self.n_robots_blue + self.n_robots_yellow):
             self.ou_actions.append(
@@ -112,7 +112,8 @@ class VSSMAEnv(VSSBaseEnv):
             )
             robots_dict[i].append(self.norm_v(self.frame.robots_blue[i].v_x))
             robots_dict[i].append(self.norm_v(self.frame.robots_blue[i].v_y))
-            robots_dict[i].append(self.norm_w(self.frame.robots_blue[i].v_theta))
+            robots_dict[i].append(self.norm_w(
+                self.frame.robots_blue[i].v_theta))
 
         rotaded_obs = list()
         for i in range(self.n_robots_control):
@@ -142,11 +143,16 @@ class VSSMAEnv(VSSBaseEnv):
             observation += robots[idx]
 
             for i in range(self.n_robots_yellow):
-                observation.append(self.norm_pos(self.frame.robots_yellow[i].x))
-                observation.append(self.norm_pos(self.frame.robots_yellow[i].y))
-                observation.append(self.norm_v(self.frame.robots_yellow[i].v_x))
-                observation.append(self.norm_v(self.frame.robots_yellow[i].v_y))
-                observation.append(self.norm_w(self.frame.robots_yellow[i].v_theta))
+                observation.append(self.norm_pos(
+                    self.frame.robots_yellow[i].x))
+                observation.append(self.norm_pos(
+                    self.frame.robots_yellow[i].y))
+                observation.append(self.norm_v(
+                    self.frame.robots_yellow[i].v_x))
+                observation.append(self.norm_v(
+                    self.frame.robots_yellow[i].v_y))
+                observation.append(self.norm_w(
+                    self.frame.robots_yellow[i].v_theta))
 
             observations.append(np.array(observation, dtype=np.float32))
 
@@ -184,11 +190,14 @@ class VSSMAEnv(VSSBaseEnv):
         w_move = 0.2
         w_ball_grad = 0.8
         w_energy = 2e-4
+        w_col = 2e-5
         if self.reward_shaping_total is None:
             self.reward_shaping_total = {'goal_score': 0, 'ball_grad': 0,
                                          'goals_blue': 0, 'goals_yellow': 0}
             for i in range(self.n_robots_control):
-                self.reward_shaping_total[f'robot_{i}'] = {'energy': 0, 'move': 0}
+                self.reward_shaping_total[f'robot_{i}'] = {'energy': 0,
+                                                           'move': 0,
+                                                           'collision': 0}
 
         # Check if goal ocurred
         if self.frame.ball.x > (self.field.length / 2):
@@ -215,10 +224,14 @@ class VSSMAEnv(VSSBaseEnv):
                     # Calculate Move ball
                     move_reward = self._move_reward(robot_idx=idx)
                     self.reward_shaping_total[f'robot_{idx}']['move'] += w_move * move_reward  # noqa
+                    # Collision Penalty
+                    col_penalty = self._collision_penalty(robot_idx=idx)
+                    self.reward_shaping_total[f'robot_{idx}']['collision'] += w_col * col_penalty  # noqa
 
                     rew = w_ball_grad * grad_ball_potential + \
                         w_move * move_reward + \
-                        w_energy * energy_penalty
+                        w_energy * energy_penalty + \
+                        col_penalty
 
                     reward[idx] += rew
                     self.reward_shaping_total[f'robot_{idx}']['energy'] += w_energy * energy_penalty  # noqa
@@ -246,7 +259,7 @@ class VSSMAEnv(VSSBaseEnv):
 
         places = KDTree()
         places.insert((pos_frame.ball.x, pos_frame.ball.y))
-        
+
         for i in range(self.n_robots_blue):
             pos = (x(), y())
             while places.get_nearest(pos)[1] < min_dist:
@@ -261,7 +274,8 @@ class VSSMAEnv(VSSBaseEnv):
                 pos = (x(), y())
 
             places.insert(pos)
-            pos_frame.robots_yellow[i] = Robot(x=pos[0], y=pos[1], theta=theta())
+            pos_frame.robots_yellow[i] = Robot(
+                x=pos[0], y=pos[1], theta=theta())
 
         return pos_frame
 
@@ -284,7 +298,7 @@ class VSSMAEnv(VSSBaseEnv):
         left_wheel_speed /= self.field.rbt_wheel_radius
         right_wheel_speed /= self.field.rbt_wheel_radius
 
-        return left_wheel_speed , right_wheel_speed
+        return left_wheel_speed, right_wheel_speed
 
     def _ball_grad(self):
         '''Calculate ball potential gradient
@@ -316,18 +330,21 @@ class VSSMAEnv(VSSBaseEnv):
         self.previous_ball_potential = ball_potential
 
         return grad_ball_potential
-    
-    def closest_to_ball(self):
-        ball = np.array([self.frame.ball.x, self.frame.ball.y])
+
+    def closest_to(self, obj_pos):
         closest = 0
         closest_dist = 100000
         for i, robot in self.frame.robots_blue.items():
             pos = np.array([robot.x, robot.y])
-            dist = np.linalg.norm(ball - pos)
-            if dist < closest_dist:
+            dist = np.linalg.norm(obj_pos - pos)
+            if dist < closest_dist and dist != 0:
                 closest_dist = dist
                 closest = i
-        return closest
+        return closest, closest_dist
+
+    def closest_to_ball(self):
+        ball = np.array([self.frame.ball.x, self.frame.ball.y])
+        return self.closest_to(ball)[0]
 
     def _move_reward(self, robot_idx=0):
         '''Calculate Move to ball reward
@@ -356,6 +373,12 @@ class VSSMAEnv(VSSBaseEnv):
         en_penalty_2 = abs(self.sent_commands[robot_idx].v_wheel1)
         energy_penalty = - (en_penalty_1 + en_penalty_2)
         return energy_penalty
+
+    def _collision_penalty(self, robot_idx: int):
+        robot = np.array([self.frame.robots_blue[robot_idx].x,
+                          self.frame.robots_blue[robot_idx].y])
+        _, dist = self.closest_to(robot)
+        return int(dist < 0.02)
 
 
 class VSSMAOpp(VSSMAEnv):
@@ -395,7 +418,8 @@ class VSSMAOpp(VSSMAEnv):
             observation.append(self.norm_v(-self.frame.robots_yellow[i].v_x))
             observation.append(self.norm_v(self.frame.robots_yellow[i].v_y))
 
-            observation.append(self.norm_w(-self.frame.robots_yellow[i].v_theta))
+            observation.append(
+                self.norm_w(-self.frame.robots_yellow[i].v_theta))
 
         for i in range(self.n_robots_blue):
             observation.append(self.norm_pos(-self.frame.robots_blue[i].x))

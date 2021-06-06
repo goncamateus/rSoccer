@@ -381,7 +381,7 @@ class VSSMAEnv(VSSBaseEnv):
         last_robot = np.array([self.last_frame.robots_blue[robot_idx].x,
                                self.last_frame.robots_blue[robot_idx].y])
         from_last_pos = np.linalg.norm(robot - last_robot)
-        return int(dist < 0.02 or from_last_pos < 0.01)
+        return - int(dist < 0.02 or from_last_pos < 0.01)
 
 
 class VSSMAOpp(VSSMAEnv):

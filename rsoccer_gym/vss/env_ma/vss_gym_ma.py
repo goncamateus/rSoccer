@@ -186,10 +186,9 @@ class VSSMAEnv(VSSBaseEnv):
         w_energy = 2e-4
         if self.reward_shaping_total is None:
             self.reward_shaping_total = {'goal_score': 0, 'ball_grad': 0,
-                                         'move': 0, 'goals_blue': 0,
-                                         'goals_yellow': 0}
+                                         'goals_blue': 0, 'goals_yellow': 0}
             for i in range(self.n_robots_control):
-                self.reward_shaping_total[f'robot_{i}'] = {'energy': 0}
+                self.reward_shaping_total[f'robot_{i}'] = {'energy': 0, 'move': 0}
 
         # Check if goal ocurred
         if self.frame.ball.x > (self.field.length / 2):
@@ -210,12 +209,12 @@ class VSSMAEnv(VSSBaseEnv):
                 # Calculate ball potential
                 grad_ball_potential = self._ball_grad()
                 self.reward_shaping_total['ball_grad'] += w_ball_grad * grad_ball_potential  # noqa
-                # Calculate Move ball
-                move_reward = self._move_reward()
-                self.reward_shaping_total['move'] += w_move * move_reward  # noqa
                 for idx in range(self.n_robots_control):
                     # Calculate Energy penalty
                     energy_penalty = self._energy_penalty(robot_idx=idx)
+                    # Calculate Move ball
+                    move_reward = self._move_reward(robot_idx=idx)
+                    self.reward_shaping_total[f'robot_{idx}']['move'] += w_move * move_reward  # noqa
 
                     rew = w_ball_grad * grad_ball_potential + \
                         w_move * move_reward + \
@@ -330,7 +329,7 @@ class VSSMAEnv(VSSBaseEnv):
                 closest = i
         return closest
 
-    def _move_reward(self):
+    def _move_reward(self, robot_idx=0):
         '''Calculate Move to ball reward
 
         Cosine between the robot vel vector and the vector robot -> ball.
@@ -338,7 +337,6 @@ class VSSMAEnv(VSSBaseEnv):
         '''
 
         ball = np.array([self.frame.ball.x, self.frame.ball.y])
-        robot_idx = self.closest_to_ball()
         robot = np.array([self.frame.robots_blue[robot_idx].x,
                           self.frame.robots_blue[robot_idx].y])
         robot_vel = np.array([self.frame.robots_blue[robot_idx].v_x,

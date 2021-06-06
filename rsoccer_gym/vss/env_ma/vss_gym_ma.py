@@ -231,7 +231,7 @@ class VSSMAEnv(VSSBaseEnv):
                     rew = w_ball_grad * grad_ball_potential + \
                         w_move * move_reward + \
                         w_energy * energy_penalty + \
-                        col_penalty
+                        w_col * col_penalty
 
                     reward[idx] += rew
                     self.reward_shaping_total[f'robot_{idx}']['energy'] += w_energy * energy_penalty  # noqa
@@ -337,7 +337,7 @@ class VSSMAEnv(VSSBaseEnv):
         for i, robot in self.frame.robots_blue.items():
             pos = np.array([robot.x, robot.y])
             dist = np.linalg.norm(obj_pos - pos)
-            if dist < closest_dist and dist != 0:
+            if dist < closest_dist and (obj_pos != pos).all():
                 closest_dist = dist
                 closest = i
         return closest, closest_dist

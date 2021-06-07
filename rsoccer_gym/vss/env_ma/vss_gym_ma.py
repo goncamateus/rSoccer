@@ -190,7 +190,7 @@ class VSSMAEnv(VSSBaseEnv):
         w_move = 0.2
         w_ball_grad = 0.8
         w_energy = 2e-4
-        w_col = 2e-4
+        w_col = 2e-2
         if self.reward_shaping_total is None:
             self.reward_shaping_total = {'goal_score': 0, 'ball_grad': 0,
                                          'goals_blue': 0, 'goals_yellow': 0}
@@ -381,7 +381,7 @@ class VSSMAEnv(VSSBaseEnv):
         last_robot = np.array([self.last_frame.robots_blue[robot_idx].x,
                                self.last_frame.robots_blue[robot_idx].y])
         from_last_pos = np.linalg.norm(robot - last_robot)
-        return - int(dist < 0.02 or from_last_pos < 0.01)
+        return - int(dist < 0.04 or from_last_pos < 0.05)
 
 
 class VSSMAOpp(VSSMAEnv):

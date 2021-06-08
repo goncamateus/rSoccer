@@ -190,7 +190,7 @@ class VSSMAEnv(VSSBaseEnv):
         w_move = 0.2
         w_ball_grad = 0.8
         w_energy = 2e-4
-        w_col = 2e-2
+        w_col = 2e-1
         if self.reward_shaping_total is None:
             self.reward_shaping_total = {'goal_score': 0, 'ball_grad': 0,
                                          'goals_blue': 0, 'goals_yellow': 0}

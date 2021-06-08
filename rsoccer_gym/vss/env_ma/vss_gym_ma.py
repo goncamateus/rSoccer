@@ -342,9 +342,15 @@ class VSSMAEnv(VSSBaseEnv):
                 closest = i
         return closest, closest_dist
 
-    def closest_to_ball(self):
+    def closests_to_ball(self):
+        dists = list()
         ball = np.array([self.frame.ball.x, self.frame.ball.y])
-        return self.closest_to(ball)[0]
+        for i, robot in self.frame.robots_blue.items():
+            pos = np.array([robot.x, robot.y])
+            dist = np.linalg.norm(ball - pos)
+            dists.append((i, dist))
+        dists.sort(key=lambda x: x[1])
+        return [x[0] for x in dists]
 
     def _move_reward(self, robot_idx=0):
         '''Calculate Move to ball reward
@@ -364,7 +370,10 @@ class VSSMAEnv(VSSBaseEnv):
         move_reward = np.dot(robot_ball, robot_vel)
 
         move_reward = np.clip(move_reward / 0.4, -5.0, 5.0)
-        return move_reward
+
+        move_decay = [1, 0.25, 0]
+        decay_index = self.closests_to_ball().index(robot_idx)
+        return move_reward * move_decay[decay_index]
 
     def _energy_penalty(self, robot_idx: int):
         '''Calculates the energy penalty'''

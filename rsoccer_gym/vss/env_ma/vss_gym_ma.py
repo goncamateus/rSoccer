@@ -375,13 +375,11 @@ class VSSMAEnv(VSSBaseEnv):
         return energy_penalty
 
     def _collision_penalty(self, robot_idx: int):
-        robot = np.array([self.frame.robots_blue[robot_idx].x,
-                          self.frame.robots_blue[robot_idx].y])
-        _, dist = self.closest_to(robot)
-        last_robot = np.array([self.last_frame.robots_blue[robot_idx].x,
-                               self.last_frame.robots_blue[robot_idx].y])
-        from_last_pos = np.linalg.norm(robot - last_robot)
-        return - int(dist < 0.04 or from_last_pos < 0.05)
+        robot = self.frame.robots_blue[robot_idx]
+        robot_pos = np.array([robot.x, robot.y])
+        _, dist = self.closest_to(robot_pos)
+        colliding = dist < 0.082
+        return - int(colliding)
 
 
 class VSSMAOpp(VSSMAEnv):

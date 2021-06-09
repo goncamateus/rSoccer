@@ -371,7 +371,7 @@ class VSSMAEnv(VSSBaseEnv):
 
         move_reward = np.clip(move_reward / 0.4, -5.0, 5.0)
 
-        move_decay = [1, 0.5, 0.25]
+        move_decay = [1, 1, 1]
         decay_index = self.closests_to_ball().index(robot_idx)
         return move_reward * move_decay[decay_index]
 

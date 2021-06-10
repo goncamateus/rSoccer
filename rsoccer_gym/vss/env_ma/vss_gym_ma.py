@@ -195,9 +195,11 @@ class VSSMAEnv(VSSBaseEnv):
             self.reward_shaping_total = {'goal_score': 0, 'ball_grad': 0,
                                          'goals_blue': 0, 'goals_yellow': 0}
             for i in range(self.n_robots_control):
-                self.reward_shaping_total[f'robot_{i}'] = {'energy': 0,
-                                                           'move': 0,
-                                                           'collision': 0}
+                self.reward_shaping_total[f'robot_{i}'] = {
+                    'energy': 0,
+                    #    'move': 0,
+                    'collision': 0
+                }
 
         # Check if goal ocurred
         if self.frame.ball.x > (self.field.length / 2):
@@ -219,6 +221,7 @@ class VSSMAEnv(VSSBaseEnv):
                 grad_ball_potential = self._ball_grad()
                 self.reward_shaping_total['ball_grad'] += w_ball_grad * grad_ball_potential  # noqa
                 for idx in range(self.n_robots_blue):
+                    rew = 0
                     # Calculate Energy penalty
                     energy_penalty = self._energy_penalty(robot_idx=idx)
                     # Calculate Move ball
@@ -228,10 +231,10 @@ class VSSMAEnv(VSSBaseEnv):
                     col_penalty = self._collision_penalty(robot_idx=idx)
                     self.reward_shaping_total[f'robot_{idx}']['collision'] += w_col * col_penalty  # noqa
 
-                    rew = w_ball_grad * grad_ball_potential + \
-                        w_move * move_reward + \
-                        w_energy * energy_penalty + \
-                        w_col * col_penalty
+                    rew += w_ball_grad * grad_ball_potential
+                    rew += w_energy * energy_penalty
+                    rew += w_col * col_penalty
+                    # rew += w_move * move_reward
 
                     reward[idx] += rew
                     self.reward_shaping_total[f'robot_{idx}']['energy'] += w_energy * energy_penalty  # noqa

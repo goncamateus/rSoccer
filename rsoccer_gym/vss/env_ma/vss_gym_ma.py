@@ -225,8 +225,8 @@ class VSSMAEnv(VSSBaseEnv):
                     # Calculate Energy penalty
                     energy_penalty = self._energy_penalty(robot_idx=idx)
                     # Calculate Move ball
-                    move_reward = self._move_reward(robot_idx=idx)
-                    self.reward_shaping_total[f'robot_{idx}']['move'] += w_move * move_reward  # noqa
+                    # move_reward = self._move_reward(robot_idx=idx)
+                    # self.reward_shaping_total[f'robot_{idx}']['move'] += w_move * move_reward  # noqa
                     # Collision Penalty
                     col_penalty = self._collision_penalty(robot_idx=idx)
                     self.reward_shaping_total[f'robot_{idx}']['collision'] += w_col * col_penalty  # noqa

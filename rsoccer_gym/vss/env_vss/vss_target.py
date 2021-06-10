@@ -52,7 +52,8 @@ class VSSTargetEnv(VSSBaseEnv):
         self.actions: Dict = None
         self.reward_shaping_total = None
         self.v_wheel_deadzone = 0.05
-        self.ball_dist_scale = np.linalg.norm([self.field.width, self.field.length])
+        self.ball_dist_scale = np.linalg.norm(
+            [self.field.width, self.field.length])
 
         self.ou_actions = []
         for i in range(self.n_robots_blue + self.n_robots_yellow):
@@ -111,21 +112,25 @@ class VSSTargetEnv(VSSBaseEnv):
         goal = False
         w_energy = 2e-4
         if self.reward_shaping_total is None:
-            self.reward_shaping_total = {'energy': 0, 'objective_dist': 0}
+            self.reward_shaping_total = {'energy': 0,
+                                         'objective_dist': 0,
+                                         'goal': 0}
 
         if self.last_frame is not None:
             # Calculate Energy penalty
             energy_penalty = self.__energy_penalty()
             robot = np.array([self.frame.robots_blue[0].x,
-                                    self.frame.robots_blue[0].y])
+                              self.frame.robots_blue[0].y])
             ball = np.array([self.frame.ball.x, self.frame.ball.y])
             dist_to_ball = np.linalg.norm(robot - ball)
-            reward_objective = self.__ball_dist_rw() / self.ball_dist_scale
-            if dist_to_ball < 0.04:
+            reward_objective = -dist_to_ball/self.ball_dist_scale
+            if self.frame.ball.v_x > 0:
                 goal = True
-                reward_objective = 10
-            reward = w_energy * energy_penalty + reward_objective
+                reward += 10
+                self.reward_shaping_total['goal'] += 1
+            reward += w_energy * energy_penalty + reward_objective
 
+            self.reward_shaping_total['final_dist'] = dist_to_ball
             self.reward_shaping_total['objective_dist'] += reward_objective
             self.reward_shaping_total['energy'] += w_energy \
                 * energy_penalty
@@ -204,21 +209,21 @@ class VSSTargetEnv(VSSBaseEnv):
 
     def __ball_dist_rw(self):
         assert(self.last_frame is not None)
-        
+
         # Calculate previous ball dist
         last_ball = self.last_frame.ball
         last_robot = self.last_frame.robots_blue[0]
         last_ball_pos = np.array([last_ball.x, last_ball.y])
         last_robot_pos = np.array([last_robot.x, last_robot.y])
         last_ball_dist = np.linalg.norm(last_robot_pos - last_ball_pos)
-        
+
         # Calculate new ball dist
         ball = self.frame.ball
         robot = self.frame.robots_blue[0]
         ball_pos = np.array([ball.x, ball.y])
         robot_pos = np.array([robot.x, robot.y])
         ball_dist = np.linalg.norm(robot_pos - ball_pos)
-        
+
         ball_dist_rw = last_ball_dist - ball_dist
-        
+
         return ball_dist_rw

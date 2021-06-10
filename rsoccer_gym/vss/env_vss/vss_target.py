@@ -112,8 +112,7 @@ class VSSTargetEnv(VSSBaseEnv):
         goal = False
         w_energy = 2e-4
         if self.reward_shaping_total is None:
-            self.reward_shaping_total = {'objective_dist': 0,
-                                         'goal': 0}
+            self.reward_shaping_total = {'goal': 0}
 
         if self.last_frame is not None:
             # Calculate Energy penalty
@@ -122,15 +121,11 @@ class VSSTargetEnv(VSSBaseEnv):
                               self.frame.robots_blue[0].y])
             ball = np.array([self.frame.ball.x, self.frame.ball.y])
             dist_to_ball = np.linalg.norm(robot - ball)
-            reward_objective = -dist_to_ball/self.ball_dist_scale
             if self.frame.ball.v_x != 0:
                 goal = True
                 reward += 10
                 self.reward_shaping_total['goal'] += 1
-            reward += reward_objective
-
             self.reward_shaping_total['final_dist'] = dist_to_ball
-            self.reward_shaping_total['objective_dist'] += reward_objective
 
         return reward, goal
 

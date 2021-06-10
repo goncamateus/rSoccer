@@ -116,11 +116,12 @@ class VSSTargetEnv(VSSBaseEnv):
         if self.last_frame is not None:
             # Calculate Energy penalty
             energy_penalty = self.__energy_penalty()
-            reached_obj = np.array([self.frame.robots_blue[0].x,
+            robot = np.array([self.frame.robots_blue[0].x,
                                     self.frame.robots_blue[0].y])
             ball = np.array([self.frame.ball.x, self.frame.ball.y])
-            reward_objective = -np.linalg.norm(reached_obj - ball)/self.ball_dist_scale
-            if reward_objective > -0.04:
+            dist_to_ball = np.linalg.norm(robot - ball)
+            reward_objective = self.__ball_dist_rw() / self.ball_dist_scale
+            if dist_to_ball < 0.04:
                 goal = True
                 reward_objective = 10
             reward = w_energy * energy_penalty + reward_objective
@@ -200,3 +201,24 @@ class VSSTargetEnv(VSSBaseEnv):
         en_penalty_2 = abs(self.sent_commands[0].v_wheel1)
         energy_penalty = - (en_penalty_1 + en_penalty_2)
         return energy_penalty
+
+    def __ball_dist_rw(self):
+        assert(self.last_frame is not None)
+        
+        # Calculate previous ball dist
+        last_ball = self.last_frame.ball
+        last_robot = self.last_frame.robots_blue[0]
+        last_ball_pos = np.array([last_ball.x, last_ball.y])
+        last_robot_pos = np.array([last_robot.x, last_robot.y])
+        last_ball_dist = np.linalg.norm(last_robot_pos - last_ball_pos)
+        
+        # Calculate new ball dist
+        ball = self.frame.ball
+        robot = self.frame.robots_blue[0]
+        ball_pos = np.array([ball.x, ball.y])
+        robot_pos = np.array([robot.x, robot.y])
+        ball_dist = np.linalg.norm(robot_pos - ball_pos)
+        
+        ball_dist_rw = last_ball_dist - ball_dist
+        
+        return ball_dist_rw

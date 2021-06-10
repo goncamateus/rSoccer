@@ -127,8 +127,8 @@ class VSSTargetEnv(VSSBaseEnv):
                 self.reward_shaping_total['goal'] += 1
             reward += energy_penalty*w_energy + reward_dist
             self.reward_shaping_total['final_dist'] = dist_to_ball
-            self.reward_shaping_total['dist_ball'] += dist_to_ball
-            self.reward_shaping_total['energy'] += dist_to_ball
+            self.reward_shaping_total['dist_ball'] += reward_dist
+            self.reward_shaping_total['energy'] += energy_penalty
 
 
         return reward, goal

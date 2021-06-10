@@ -38,7 +38,7 @@ class VSSTargetEnv(VSSBaseEnv):
     """
 
     def __init__(self):
-        super().__init__(field_type=0, n_robots_blue=3, n_robots_yellow=3,
+        super().__init__(field_type=0, n_robots_blue=1, n_robots_yellow=0,
                          time_step=0.025)
 
         self.action_space = gym.spaces.Box(low=-1, high=1,
@@ -52,6 +52,7 @@ class VSSTargetEnv(VSSBaseEnv):
         self.actions: Dict = None
         self.reward_shaping_total = None
         self.v_wheel_deadzone = 0.05
+        self.ball_dist_scale = np.linalg.norm([self.field.width, self.field.length])
 
         self.ou_actions = []
         for i in range(self.n_robots_blue + self.n_robots_yellow):
@@ -67,22 +68,18 @@ class VSSTargetEnv(VSSBaseEnv):
         self.previous_ball_potential = None
         for ou in self.ou_actions:
             ou.reset()
-        self.objective = [random.uniform(-0.5, 0.5), random.uniform(-0.5, 0.5)]
-        self.objective = np.array(self.objective)
         return super().reset()
 
     def step(self, action):
         observation, reward, done, _ = super().step(action)
-        self.frame.ball.x = self.objective[0]
-        self.frame.ball.y = self.objective[1]
         return observation, reward, done, self.reward_shaping_total
 
     def _frame_to_observations(self):
         observation = []
         observation.append(self.norm_pos(self.frame.robots_blue[0].x))
         observation.append(self.norm_pos(self.frame.robots_blue[0].y))
-        observation.append(self.norm_pos(self.objective[0]))
-        observation.append(self.norm_pos(self.objective[1]))
+        observation.append(self.norm_pos(self.frame.ball.x))
+        observation.append(self.norm_pos(self.frame.ball.y))
         return np.array(observation, dtype=np.float32)
 
     def _get_commands(self, actions):
@@ -121,12 +118,12 @@ class VSSTargetEnv(VSSBaseEnv):
             energy_penalty = self.__energy_penalty()
             reached_obj = np.array([self.frame.robots_blue[0].x,
                                     self.frame.robots_blue[0].y])
-            reward_objective = -np.linalg.norm(reached_obj - self.objective)*self.max_pos
+            ball = np.array([self.frame.ball.x, self.frame.ball.y])
+            reward_objective = -np.linalg.norm(reached_obj - ball)/self.ball_dist_scale
             if reward_objective > -0.04:
-                self.objective = [random.uniform(-0.5, 0.5),
-                                  random.uniform(-0.5, 0.5)]
-                self.objective = np.array(self.objective)
-            reward = w_energy * energy_penalty
+                goal = True
+                reward_objective = 10
+            reward = w_energy * energy_penalty + reward_objective
 
             self.reward_shaping_total['objective_dist'] += reward_objective
             self.reward_shaping_total['energy'] += w_energy \

@@ -78,6 +78,9 @@ class VSSTargetEnv(VSSBaseEnv):
         observation = []
         observation.append(self.norm_pos(self.frame.robots_blue[0].x))
         observation.append(self.norm_pos(self.frame.robots_blue[0].y))
+        observation.append(self.norm_v(self.frame.robots_blue[0].v_x))
+        observation.append(self.norm_v(self.frame.robots_blue[0].v_y))
+        observation.append(self.norm_w(self.frame.robots_blue[0].v_theta))
         observation.append(self.norm_pos(self.frame.ball.x))
         observation.append(self.norm_pos(self.frame.ball.y))
         return np.array(observation, dtype=np.float32)

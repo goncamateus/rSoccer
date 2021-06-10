@@ -45,7 +45,7 @@ class VSSTargetEnv(VSSBaseEnv):
                                            shape=(2, ), dtype=np.float32)
         self.observation_space = gym.spaces.Box(low=-self.NORM_BOUNDS,
                                                 high=self.NORM_BOUNDS,
-                                                shape=(4, ), dtype=np.float32)
+                                                shape=(7, ), dtype=np.float32)
 
         # Initialize Class Atributes
         self.previous_ball_potential = None

@@ -134,39 +134,22 @@ class VSSTargetEnv(VSSBaseEnv):
         field_half_length = self.field.length / 2
         field_half_width = self.field.width / 2
 
-        def x(): return random.uniform(-field_half_length + 0.1,
-                                       field_half_length - 0.1)
+        def x(): return random.uniform(-field_half_length + 0.25,
+                                       field_half_length - 0.25)
 
-        def y(): return random.uniform(-field_half_width + 0.1,
-                                       field_half_width - 0.1)
+        def y(): return random.uniform(-field_half_width + 0.25,
+                                       field_half_width - 0.25)
+
+        def diff(): return 0.2*random.choice([-1, 1])
 
         def theta(): return random.uniform(0, 360)
 
         pos_frame: Frame = Frame()
 
         pos_frame.ball = Ball(x=x(), y=y())
-
-        min_dist = 0.1
-
-        places = KDTree()
-        places.insert((pos_frame.ball.x, pos_frame.ball.y))
-
-        for i in range(self.n_robots_blue):
-            pos = (x(), y())
-            while places.get_nearest(pos)[1] < min_dist:
-                pos = (x(), y())
-
-            places.insert(pos)
-            pos_frame.robots_blue[i] = Robot(x=pos[0], y=pos[1], theta=theta())
-
-        for i in range(self.n_robots_yellow):
-            pos = (x(), y())
-            while places.get_nearest(pos)[1] < min_dist:
-                pos = (x(), y())
-
-            places.insert(pos)
-            pos_frame.robots_yellow[i] = Robot(
-                x=pos[0], y=pos[1], theta=theta())
+        pos_frame.robots_blue[0] = Robot(x=pos_frame.ball.x - diff(),
+                                         y=pos_frame.ball.y - diff(),
+                                         theta=theta())
 
         return pos_frame
 

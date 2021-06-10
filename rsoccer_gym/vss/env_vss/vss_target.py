@@ -123,7 +123,7 @@ class VSSTargetEnv(VSSBaseEnv):
             ball = np.array([self.frame.ball.x, self.frame.ball.y])
             dist_to_ball = np.linalg.norm(robot - ball)
             reward_objective = -dist_to_ball/self.ball_dist_scale
-            if self.frame.ball.v_x > 0:
+            if self.frame.ball.v_x != 0:
                 goal = True
                 reward += 10
                 self.reward_shaping_total['goal'] += 1

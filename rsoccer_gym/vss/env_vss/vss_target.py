@@ -112,8 +112,7 @@ class VSSTargetEnv(VSSBaseEnv):
         goal = False
         w_energy = 2e-4
         if self.reward_shaping_total is None:
-            self.reward_shaping_total = {'energy': 0,
-                                         'objective_dist': 0,
+            self.reward_shaping_total = {'objective_dist': 0,
                                          'goal': 0}
 
         if self.last_frame is not None:

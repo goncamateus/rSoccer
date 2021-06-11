@@ -194,10 +194,9 @@ class VSSMACoachEnv(VSSBaseEnv):
         if self.reward_shaping_total is None:
             self.reward_shaping_total = {'goal_score': 0, 'ball_grad': 0,
                                          'goals_blue': 0, 'goals_yellow': 0,
-                                         'total_move': 0, 'total_energy': 0}
+                                         'total_move': 0}
             for i in range(self.n_robots_control):
                 self.reward_shaping_total[f'robot_{i+1}'] = {
-                    'energy': 0,
                     'move': 0,
                 }
 
@@ -224,8 +223,8 @@ class VSSMACoachEnv(VSSBaseEnv):
                 for idx in range(self.n_robots_blue):
                     # Calculate Energy penalty
                     energy_penalty = self._energy_penalty(robot_idx=idx)
-                    self.reward_shaping_total[f'robot_{idx+1}']['energy'] += w_energy * energy_penalty  # noqa
-                    self.reward_shaping_total['total_energy'] += w_energy * energy_penalty  # noqa
+                    # self.reward_shaping_total[f'robot_{idx+1}']['energy'] += w_energy * energy_penalty  # noqa
+                    # self.reward_shaping_total['total_energy'] += w_energy * energy_penalty  # noqa
                     reward += w_energy * energy_penalty
                     # Calculate Move ball
                     move_reward = self._move_reward(robot_idx=idx)

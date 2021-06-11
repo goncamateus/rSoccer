@@ -156,8 +156,6 @@ class VSSMACoachEnv(VSSBaseEnv):
             observation.append(
                 self.norm_w(self.frame.robots_blue[idx].v_theta)
             )
-            observation.append(self.norm_pos(self.frame.robots_yellow[idx].x))
-            observation.append(self.norm_pos(self.frame.robots_yellow[idx].y))
             observations.append(np.array(observation, dtype=np.float32))
 
         return observations

@@ -218,18 +218,10 @@ class VSSMACoachEnv(VSSBaseEnv):
                 grad_ball_potential = self._ball_grad()
                 self.reward_shaping_total['ball_grad'] += w_ball_grad * grad_ball_potential  # noqa
                 reward += w_ball_grad * grad_ball_potential
-                stuck = self.ball_stuck()
 
                 for idx in range(self.n_robots_blue):
-                    # Calculate Energy penalty
-                    energy_penalty = self._energy_penalty(robot_idx=idx)
-                    # self.reward_shaping_total[f'robot_{idx+1}']['energy'] += w_energy * energy_penalty  # noqa
-                    # self.reward_shaping_total['total_energy'] += w_energy * energy_penalty  # noqa
-                    reward += w_energy * energy_penalty
                     # Calculate Move ball
                     move_reward = self._move_reward(robot_idx=idx)
-                    if stuck and idx in stuck:
-                        move_reward *= 1 if move_reward < 0 else -1
                     self.reward_shaping_total[f'robot_{idx+1}']['move'] += w_move * move_reward  # noqa
                     self.reward_shaping_total['total_move'] += w_move * move_reward  # noqa
                     reward += w_move * move_reward
@@ -367,8 +359,9 @@ class VSSMACoachEnv(VSSBaseEnv):
         move_reward = np.dot(robot_ball, robot_vel)
 
         move_reward = np.clip(move_reward / 0.4, -5.0, 5.0)
-
-        return move_reward
+        move_decay = [1, 0.2, 0.1]
+        decay_index = [x[0] for x in self.closests_to_ball()].index(robot_idx)
+        return move_reward*move_decay[decay_index]
 
     def _energy_penalty(self, robot_idx: int):
         '''Calculates the energy penalty'''
@@ -378,7 +371,7 @@ class VSSMACoachEnv(VSSBaseEnv):
         energy_penalty = - (en_penalty_1 + en_penalty_2)
         return energy_penalty
 
-    def ball_stuck(self):
+    def ball_stuck(self): 
         min_dist = 0.1
         closests = self.closests_to_ball()
         too_close = [x[1] < min_dist for x in closests]

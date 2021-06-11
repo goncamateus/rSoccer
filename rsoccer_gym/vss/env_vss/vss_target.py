@@ -16,13 +16,16 @@ class VSSTargetEnv(VSSBaseEnv):
 
         Description:
         Observation:
-            Type: Box(4)
+            Type: Box(7)
             Normalized Bounds to [-1.25, 1.25]
             Num             Observation normalized  
             0               id i Blue Robot X
             1               id i Blue Robot Y
-            2               Objective X
-            3               Objective Y
+            2               id i Blue Robot VX
+            3               id i Blue Robot VY
+            4               id i Blue Robot Vtheta
+            5               Objective X
+            6               Objective Y
         Actions:
             Type: Box(2, )
             Num     Action

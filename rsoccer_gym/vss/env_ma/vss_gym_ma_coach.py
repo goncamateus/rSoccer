@@ -188,7 +188,7 @@ class VSSMACoachEnv(VSSBaseEnv):
     def _calculate_reward_and_done(self):
         reward = 0
         goal = False
-        w_move = 0.2
+        w_move = 0.05
         w_ball_grad = 0.8
         w_energy = 2e-4
         if self.reward_shaping_total is None:
@@ -223,6 +223,8 @@ class VSSMACoachEnv(VSSBaseEnv):
                 for idx in range(self.n_robots_blue):
                     # Calculate Move ball
                     move_reward = self._move_reward(robot_idx=idx)
+                    if abs(self.frame.robots_blue[idx].v_x) < 0.1:
+                        move_reward -= 0.01
                     self.reward_shaping_total[f'robot_{idx+1}']['move'] += w_move * move_reward  # noqa
                     self.reward_shaping_total['total_move'] += w_move * move_reward  # noqa
                     reward += w_move * move_reward

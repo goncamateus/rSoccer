@@ -216,6 +216,8 @@ class VSSMACoachEnv(VSSBaseEnv):
             if self.last_frame is not None:
                 # Calculate ball potential
                 grad_ball_potential = self._ball_grad()
+                if grad_ball_potential == 0:
+                    grad_ball_potential -= 2e-4
                 self.reward_shaping_total['ball_grad'] += w_ball_grad * grad_ball_potential  # noqa
                 reward += w_ball_grad * grad_ball_potential
 

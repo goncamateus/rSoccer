@@ -221,12 +221,12 @@ class VSSMACoachEnv(VSSBaseEnv):
                 self.reward_shaping_total['ball_grad'] += w_ball_grad * grad_ball_potential  # noqa
                 reward += w_ball_grad * grad_ball_potential
 
-                for idx in range(self.n_robots_blue):
-                    # Calculate Move ball
-                    move_reward = self._move_reward(robot_idx=idx)
-                    self.reward_shaping_total[f'robot_{idx+1}']['move'] += w_move * move_reward  # noqa
-                    self.reward_shaping_total['total_move'] += w_move * move_reward  # noqa
-                    reward += w_move * move_reward
+                # for idx in range(self.n_robots_blue):
+                #     # Calculate Move ball
+                #     move_reward = self._move_reward(robot_idx=idx)
+                #     self.reward_shaping_total[f'robot_{idx+1}']['move'] += w_move * move_reward  # noqa
+                #     self.reward_shaping_total['total_move'] += w_move * move_reward  # noqa
+                #     reward += w_move * move_reward
         return reward, goal
 
     def _get_initial_positions_frame(self):

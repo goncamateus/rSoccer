@@ -58,7 +58,7 @@ class VSSMACoachEnv(VSSBaseEnv):
             5 minutes match time
     """
 
-    def __init__(self, n_robots_control=3):
+    def __init__(self, n_robots_control=1):
         super().__init__(field_type=0, n_robots_blue=3, n_robots_yellow=3,
                          time_step=0.025)
 
@@ -361,9 +361,7 @@ class VSSMACoachEnv(VSSBaseEnv):
         move_reward = np.dot(robot_ball, robot_vel)
 
         move_reward = np.clip(move_reward / 0.4, -5.0, 5.0)
-        move_decay = [1, 0.2, 0.1]
-        decay_index = [x[0] for x in self.closests_to_ball()].index(robot_idx)
-        return move_reward*move_decay[decay_index]
+        return move_reward
 
     def _energy_penalty(self, robot_idx: int):
         '''Calculates the energy penalty'''

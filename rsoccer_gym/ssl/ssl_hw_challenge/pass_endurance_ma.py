@@ -166,7 +166,6 @@ class SSLPassEnduranceMAEnv(SSLBaseEnv):
     def _calculate_reward_and_done(self):
         w_ball_grad = 1/self.ball_grad_scale
         w_energy = 1/self.energy_scale
-        w_move = 0.8
         reward = [0 for i in range(self.n_robots_blue)]
         done = False
         if self.reward_shaping_total is None:
@@ -184,7 +183,7 @@ class SSLPassEnduranceMAEnv(SSLBaseEnv):
             self.shooter_id, self.receiver_id = self.receiver_id, self.shooter_id
         else:
             rw_ball_grad = w_ball_grad * self.__ball_grad_rw()
-            rw_ball_dist = self.__ball_dist_rw() * w_move
+            rw_ball_dist = self.__ball_dist_rw()
             reward[self.shooter_id] += rw_ball_grad
             self.reward_shaping_total['ball_grad'] += rw_ball_grad
             reward[self.receiver_id] += rw_ball_dist
@@ -281,7 +280,7 @@ class SSLPassEnduranceMAEnv(SSLBaseEnv):
             + abs(robot.v_wheel2)\
             + abs(robot.v_wheel3)
 
-        return energy
+        return -energy
 
     def __ball_dist_rw(self):
         assert(self.last_frame is not None)

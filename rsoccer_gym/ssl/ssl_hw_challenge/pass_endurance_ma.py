@@ -187,7 +187,7 @@ class SSLPassEnduranceMAEnv(SSLBaseEnv):
             reward[self.shooter_id] += rw_ball_grad
             self.reward_shaping_total['ball_grad'] += rw_ball_grad
             reward[self.receiver_id] += rw_ball_dist
-            self.reward_shaping_total['ball_dist'] += rw_ball_grad
+            self.reward_shaping_total['ball_dist'] += rw_ball_dist
 
             for i in range(self.n_robots_blue):
                 rw_energy = w_energy*self.__energy_pen(i)

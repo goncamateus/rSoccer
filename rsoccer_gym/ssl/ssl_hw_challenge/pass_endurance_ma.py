@@ -166,7 +166,7 @@ class SSLPassEnduranceMAEnv(SSLBaseEnv):
     def _calculate_reward_and_done(self):
         w_ball_grad = 1/self.ball_grad_scale
         w_energy = 1/self.energy_scale
-        w_move = 0.4
+        w_move = 0.8
         reward = [0 for i in range(self.n_robots_blue)]
         done = False
         if self.reward_shaping_total is None:

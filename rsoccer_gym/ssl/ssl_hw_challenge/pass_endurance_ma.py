@@ -239,7 +239,6 @@ class SSLPassEnduranceMAEnv(SSLBaseEnv):
         # Check if ball is in this rectangle
         ball = np.array([self.frame.ball.x, self.frame.ball.y])
         last_ball = np.array([self.last_frame.ball.x, self.last_frame.ball.y])
-        inside = -2 < ball[0] < 2 and -1.5 < ball[1] < 1.5
 
         # Check if ball is stopped for too long
         last_dist = np.linalg.norm(last_ball - recv)
@@ -249,7 +248,7 @@ class SSLPassEnduranceMAEnv(SSLBaseEnv):
             self.stopped_steps += 1
         else:
             self.stopped_steps = 0
-        return self.stopped_steps > 20 or not inside or not min_dist
+        return self.stopped_steps > 20 or not min_dist
 
     def __ball_grad_rw(self):
         assert(self.last_frame is not None)

@@ -138,6 +138,9 @@ class SSLPassEnduranceMAEnv(SSLBaseEnv):
             angle = self.frame.robots_blue[i].theta
             v_x, v_y, v_theta = self.convert_actions(
                 actions[i], np.deg2rad(angle))
+            if i == 0 and not self.frame.robots_blue[i].infrared:
+                v_x = 0
+                v_y = 0
             cmd = Robot(yellow=False, id=i, v_x=v_x, v_y=v_y, v_theta=v_theta,
                         kick_v_x=actions[i][3] * self.max_kick_x,
                         dribbler=True if actions[i][4] > 0 else False)
@@ -179,8 +182,9 @@ class SSLPassEnduranceMAEnv(SSLBaseEnv):
             for i in range(self.n_robots_blue):
                 reward[i] = 10
             self.reward_shaping_total['n_passes'] += 1
-            self.stopped_steps = 0
-            self.shooter_id, self.receiver_id = self.receiver_id, self.shooter_id
+            done = True
+            # self.stopped_steps = 0
+            # self.shooter_id, self.receiver_id = self.receiver_id, self.shooter_id
         else:
             rw_ball_grad = w_ball_grad * self.__ball_grad_rw()
             rw_ball_dist = self.__ball_dist_rw()

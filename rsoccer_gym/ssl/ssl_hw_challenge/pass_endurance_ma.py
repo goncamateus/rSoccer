@@ -282,15 +282,24 @@ class SSLPassEnduranceMAEnv(SSLBaseEnv):
         # Goal pos
         goal = np.array([self.frame.robots_blue[self.receiver_id].x,
                          self.frame.robots_blue[self.receiver_id].y])
+        last_goal = np.array([self.last_frame.robots_blue[self.receiver_id].x,
+                              self.last_frame.robots_blue[self.receiver_id].y])
 
         # Calculate previous ball dist
         last_ball = self.last_frame.ball
         ball = self.frame.ball
+        ball_pos = np.array([ball.x, ball.y])
         last_ball_pos = np.array([last_ball.x, last_ball.y])
         last_ball_dist = np.linalg.norm(goal - last_ball_pos)
 
+
+        # Check if goal_grad > ball_grad
+        goal_run = np.linalg.norm(goal - last_goal)
+        ball_run = np.linalg.norm(ball_pos - last_ball_pos)
+        if goal_run >= ball_run:
+            return -0.1
+
         # Calculate new ball dist
-        ball_pos = np.array([ball.x, ball.y])
         ball_dist = np.linalg.norm(goal - ball_pos)
 
         ball_dist_rw = last_ball_dist - ball_dist

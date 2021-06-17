@@ -193,6 +193,7 @@ class SSLPassEnduranceMAEnv(SSLBaseEnv):
             rw_ball_grad = w_ball_grad * self.__ball_grad_rw()
             rw_ball_dist = self.__ball_dist_rw()/self.ball_dist_scale
             rw_ball_out = self.__ball_inside()*10
+            rw_hold_ball = 0
             if self.steps > 40:
                 rw_hold_ball = self.__holding_rw()*0.5
             reward[self.shooter_id] += rw_ball_grad

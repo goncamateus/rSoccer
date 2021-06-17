@@ -183,15 +183,16 @@ class SSLPassEnduranceMAEnv(SSLBaseEnv):
                 reward[i] = 10
             self.reward_shaping_total['n_passes'] += 1
             done = True
-            # self.stopped_steps = 0
-            # self.shooter_id, self.receiver_id = self.receiver_id, self.shooter_id
         else:
             rw_ball_grad = w_ball_grad * self.__ball_grad_rw()
             rw_ball_dist = self.__ball_dist_rw()/self.ball_dist_scale
+            rw_ball_out = self.__ball_inside()*10
             reward[self.shooter_id] += rw_ball_grad
+            reward[self.shooter_id] += rw_ball_out
             self.reward_shaping_total['ball_grad'] += rw_ball_grad
             reward[self.receiver_id] += rw_ball_dist
             self.reward_shaping_total['ball_dist'] += rw_ball_dist
+
 
             for i in range(self.n_robots_blue):
                 rw_energy = w_energy*self.__energy_pen(i)
@@ -232,6 +233,14 @@ class SSLPassEnduranceMAEnv(SSLBaseEnv):
 
         return pos_frame
 
+    def __ball_inside(self):
+        ball = np.array([self.frame.ball.x, self.frame.ball.y])
+        half_len = self.field.length / 2
+        half_wid = self.field.width / 2
+        if abs(ball[1]) > half_wid or abs(ball[0]) > half_len:
+            return -1
+        return 0
+
     def __bad_state(self):
         # Check if dist between robots > 1.5
         recv = np.array([self.frame.robots_blue[self.receiver_id].x,
@@ -242,7 +251,7 @@ class SSLPassEnduranceMAEnv(SSLBaseEnv):
 
         # Check if ball is in this rectangle
         ball = np.array([self.frame.ball.x, self.frame.ball.y])
-        last_ball = np.array([self.last_frame.ball.x, self.last_frame.ball.y])
+        last_ball = np.array([self.last_frame.ball.x, self.last_frame.ball.y])          
 
         # Check if ball is stopped for too long
         last_dist = np.linalg.norm(last_ball - recv)
@@ -296,3 +305,11 @@ class SSLPassEnduranceMAEnv(SSLBaseEnv):
         ball_dist = np.linalg.norm(robot_pos - ball_pos)
 
         return -ball_dist
+
+    def __future_dist_rw(self):
+        ball_pos = np.array([self.frame.ball.x, self.frame.ball.y])
+        last_ball_pos = np.array([self.last_frame.ball.x,
+                                  self.last_frame.ball.y])
+        ball_vec = ball_pos - last_ball_pos
+        ball_vec = ball_vec/np.linalg.norm(ball_vec)
+

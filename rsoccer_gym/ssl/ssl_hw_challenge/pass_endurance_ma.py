@@ -200,8 +200,8 @@ class SSLPassEnduranceMAEnv(SSLBaseEnv):
             reward[self.shooter_id] += rw_ball_out
             reward[self.shooter_id] += rw_hold_ball
             self.reward_shaping_total['ball_grad'] += rw_ball_grad
-            self.reward_shaping_total['ball_out'] += rw_ball_grad
-            self.reward_shaping_total['hold_ball'] += rw_ball_grad
+            self.reward_shaping_total['ball_out'] += rw_ball_out
+            self.reward_shaping_total['hold_ball'] += rw_hold_ball
             reward[self.receiver_id] += rw_ball_dist
             self.reward_shaping_total['ball_dist'] += rw_ball_dist
 

@@ -179,7 +179,7 @@ class SSLPassEnduranceMAEnv(SSLBaseEnv):
                                          'ball_grad': 0,
                                          'ball_dist': 0,
                                          'ball_out': 0,
-                                         'hold_ball': 0
+                                        #  'hold_ball': 0
                                          }
             for i in range(self.n_robots_blue):
                 self.reward_shaping_total[f'robot_{i}'] = {'energy': 0}
@@ -196,14 +196,14 @@ class SSLPassEnduranceMAEnv(SSLBaseEnv):
             if rw_ball_out < 0:
                 done = True
             rw_hold_ball = 0
-            if self.steps > 120:
-                rw_hold_ball = self.__holding_rw()*0.05
+            # if self.steps > 120:
+            #     rw_hold_ball = self.__holding_rw()*0.05
             reward[self.shooter_id] += rw_ball_grad
             reward[self.shooter_id] += rw_ball_out
             reward[self.shooter_id] += rw_hold_ball
             self.reward_shaping_total['ball_grad'] += rw_ball_grad
             self.reward_shaping_total['ball_out'] += rw_ball_out
-            self.reward_shaping_total['hold_ball'] += rw_hold_ball
+            # self.reward_shaping_total['hold_ball'] += rw_hold_ball
             reward[self.receiver_id] += rw_ball_dist
             self.reward_shaping_total['ball_dist'] += rw_ball_dist
 
@@ -328,12 +328,12 @@ class SSLPassEnduranceMAEnv(SSLBaseEnv):
 
         return -ball_dist
 
-    def __holding_rw(self):
-        ball_pos = np.array([self.frame.ball.x, self.frame.ball.y])
-        shooter = np.array([self.frame.robots_blue[self.shooter_id].x,
-                            self.frame.robots_blue[self.shooter_id].y])
-        dist_to_shooter = np.linalg.norm(ball_pos - shooter)
-        if dist_to_shooter > 0.2:
-            return 0
-        else:
-            return -1
+    # def __holding_rw(self):
+    #     ball_pos = np.array([self.frame.ball.x, self.frame.ball.y])
+    #     shooter = np.array([self.frame.robots_blue[self.shooter_id].x,
+    #                         self.frame.robots_blue[self.shooter_id].y])
+    #     dist_to_shooter = np.linalg.norm(ball_pos - shooter)
+    #     if dist_to_shooter > 0.2:
+    #         return 0
+    #     else:
+    #         return -1

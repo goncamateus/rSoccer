@@ -197,7 +197,7 @@ class SSLPassEnduranceMAEnv(SSLBaseEnv):
                 done = True
             rw_hold_ball = 0
             if self.steps > 120:
-                rw_hold_ball = self.__holding_rw()*0.5
+                rw_hold_ball = self.__holding_rw()*0.05
             reward[self.shooter_id] += rw_ball_grad
             reward[self.shooter_id] += rw_ball_out
             reward[self.shooter_id] += rw_hold_ball

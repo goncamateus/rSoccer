@@ -56,7 +56,7 @@ class SSLPassEnduranceMAEnv(SSLBaseEnv):
         self.ball_grad_scale = np.linalg.norm([self.field.width/2,
                                                self.field.length/2])/4
         self.ball_dist_scale = np.linalg.norm([self.field.width,
-                                               self.field.length/2])
+                                               self.field.length])/4
         wheel_max_rad_s = 160
         max_steps = 1200
         self.energy_scale = ((wheel_max_rad_s * 4) * max_steps)
@@ -187,7 +187,7 @@ class SSLPassEnduranceMAEnv(SSLBaseEnv):
             # self.shooter_id, self.receiver_id = self.receiver_id, self.shooter_id
         else:
             rw_ball_grad = w_ball_grad * self.__ball_grad_rw()
-            rw_ball_dist = self.__ball_dist_rw()
+            rw_ball_dist = self.__ball_dist_rw()/self.ball_dist_scale
             reward[self.shooter_id] += rw_ball_grad
             self.reward_shaping_total['ball_grad'] += rw_ball_grad
             reward[self.receiver_id] += rw_ball_dist
@@ -288,13 +288,6 @@ class SSLPassEnduranceMAEnv(SSLBaseEnv):
     def __ball_dist_rw(self):
         assert(self.last_frame is not None)
 
-        # Calculate previous ball dist
-        last_ball = self.last_frame.ball
-        last_robot = self.last_frame.robots_blue[self.receiver_id]
-        last_ball_pos = np.array([last_ball.x, last_ball.y])
-        last_robot_pos = np.array([last_robot.x, last_robot.y])
-        last_ball_dist = np.linalg.norm(last_robot_pos - last_ball_pos)
-
         # Calculate new ball dist
         ball = self.frame.ball
         robot = self.frame.robots_blue[self.receiver_id]
@@ -302,13 +295,4 @@ class SSLPassEnduranceMAEnv(SSLBaseEnv):
         robot_pos = np.array([robot.x, robot.y])
         ball_dist = np.linalg.norm(robot_pos - ball_pos)
 
-        ball_dist_rw = last_ball_dist - ball_dist
-
-        if ball_dist_rw > 1:
-            print("ball_dist -> ", ball_dist_rw)
-            print(self.frame.ball)
-            print(self.frame.robots_blue)
-            print(self.frame.robots_yellow)
-            print("===============================")
-
-        return np.clip(ball_dist_rw, -1, 1)
+        return -ball_dist

@@ -66,6 +66,7 @@ class SSLPassEnduranceMAEnv(SSLBaseEnv):
         self.max_w = 10
         self.max_kick_x = 5.0
         self.n = 2
+        self.steps = 0
 
         print('Environment initialized')
 
@@ -122,11 +123,13 @@ class SSLPassEnduranceMAEnv(SSLBaseEnv):
         self.reward_shaping_total = None
         state = super().reset()
         self.stopped_steps = 0
+        self.steps = 0
         self.shooter_id, self.receiver_id = 0, 1
         return state
 
     def step(self, action):
         observation, reward, done, _ = super().step(action)
+        self.steps += 1
         return observation, reward, done, self.reward_shaping_total
 
     def _get_commands(self, actions):
@@ -174,7 +177,10 @@ class SSLPassEnduranceMAEnv(SSLBaseEnv):
         if self.reward_shaping_total is None:
             self.reward_shaping_total = {'n_passes': 0,
                                          'ball_grad': 0,
-                                         'ball_dist': 0}
+                                         'ball_dist': 0,
+                                         'ball_out': 0,
+                                         'hold_ball': 0
+                                         }
             for i in range(self.n_robots_blue):
                 self.reward_shaping_total[f'robot_{i}'] = {'energy': 0}
 
@@ -187,12 +193,16 @@ class SSLPassEnduranceMAEnv(SSLBaseEnv):
             rw_ball_grad = w_ball_grad * self.__ball_grad_rw()
             rw_ball_dist = self.__ball_dist_rw()/self.ball_dist_scale
             rw_ball_out = self.__ball_inside()*10
+            if self.steps > 40:
+                rw_hold_ball = self.__holding_rw()*0.5
             reward[self.shooter_id] += rw_ball_grad
             reward[self.shooter_id] += rw_ball_out
+            reward[self.shooter_id] += rw_hold_ball
             self.reward_shaping_total['ball_grad'] += rw_ball_grad
+            self.reward_shaping_total['ball_out'] += rw_ball_grad
+            self.reward_shaping_total['hold_ball'] += rw_ball_grad
             reward[self.receiver_id] += rw_ball_dist
             self.reward_shaping_total['ball_dist'] += rw_ball_dist
-
 
             for i in range(self.n_robots_blue):
                 rw_energy = w_energy*self.__energy_pen(i)
@@ -251,7 +261,7 @@ class SSLPassEnduranceMAEnv(SSLBaseEnv):
 
         # Check if ball is in this rectangle
         ball = np.array([self.frame.ball.x, self.frame.ball.y])
-        last_ball = np.array([self.last_frame.ball.x, self.last_frame.ball.y])          
+        last_ball = np.array([self.last_frame.ball.x, self.last_frame.ball.y])
 
         # Check if ball is stopped for too long
         last_dist = np.linalg.norm(last_ball - recv)
@@ -306,10 +316,12 @@ class SSLPassEnduranceMAEnv(SSLBaseEnv):
 
         return -ball_dist
 
-    def __future_dist_rw(self):
+    def __holding_rw(self):
         ball_pos = np.array([self.frame.ball.x, self.frame.ball.y])
-        last_ball_pos = np.array([self.last_frame.ball.x,
-                                  self.last_frame.ball.y])
-        ball_vec = ball_pos - last_ball_pos
-        ball_vec = ball_vec/np.linalg.norm(ball_vec)
-
+        shooter = np.array([self.frame.robots_blue[self.shooter_id].x,
+                            self.frame.robots_blue[self.shooter_id].y])
+        dist_to_shooter = np.linalg.norm(ball_pos - shooter)
+        if dist_to_shooter > 0.2:
+            return 0
+        else:
+            return -1

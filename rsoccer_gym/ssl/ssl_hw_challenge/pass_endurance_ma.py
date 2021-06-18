@@ -245,7 +245,7 @@ class SSLPassEnduranceMAEnv(SSLBaseEnv):
         half_len = self.field.length / 2
         half_wid = self.field.width / 2
         if abs(ball[1]) > half_wid or abs(ball[0]) > half_len:
-            return -1
+            return -10
         return 0
 
     def __bad_state(self):

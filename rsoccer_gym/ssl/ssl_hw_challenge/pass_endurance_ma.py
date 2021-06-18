@@ -237,7 +237,7 @@ class SSLPassEnduranceMAEnv(SSLBaseEnv):
         pos_frame.robots_blue[1] = Robot(x=receiver[0],
                                          y=receiver[1],
                                          theta=recv_angle)
-
+        self.goal = receiver
         return pos_frame
 
     def __ball_inside(self):
@@ -274,20 +274,18 @@ class SSLPassEnduranceMAEnv(SSLBaseEnv):
         assert(self.last_frame is not None)
 
         # Goal pos
-        goal = np.array([self.frame.robots_blue[self.receiver_id].x,
+        self.goal = np.array([self.frame.robots_blue[self.receiver_id].x,
                          self.frame.robots_blue[self.receiver_id].y])
-        last_goal = np.array([self.last_frame.robots_blue[self.receiver_id].x,
-                              self.last_frame.robots_blue[self.receiver_id].y])
 
         # Calculate previous ball dist
         last_ball = self.last_frame.ball
         ball = self.frame.ball
         ball_pos = np.array([ball.x, ball.y])
         last_ball_pos = np.array([last_ball.x, last_ball.y])
-        last_ball_dist = np.linalg.norm(goal - last_ball_pos)
+        last_ball_dist = np.linalg.norm(self.goal - last_ball_pos)
 
         # Calculate new ball dist
-        ball_dist = np.linalg.norm(goal - ball_pos)
+        ball_dist = np.linalg.norm(self.goal - ball_pos)
 
         ball_dist_rw = last_ball_dist - ball_dist
         return np.clip(ball_dist_rw, -1, 1)

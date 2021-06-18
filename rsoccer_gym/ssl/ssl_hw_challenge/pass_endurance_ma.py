@@ -192,12 +192,12 @@ class SSLPassEnduranceMAEnv(SSLBaseEnv):
         else:
             rw_ball_grad = w_ball_grad * self.__ball_grad_rw()
             rw_ball_dist = self.__ball_dist_rw()/self.ball_dist_scale
-            rw_ball_out = self.__ball_inside()
-            if rw_ball_out < 0:
-                done = True
-            reward[self.shooter_id] += rw_ball_grad + rw_ball_out
+            # rw_ball_out = self.__ball_inside()
+            # if rw_ball_out < 0:
+            #     done = True
+            reward[self.shooter_id] += rw_ball_grad
             self.reward_shaping_total['ball_grad'] += rw_ball_grad
-            self.reward_shaping_total['ball_out'] += rw_ball_out
+            # self.reward_shaping_total['ball_out'] += rw_ball_out
             reward[self.receiver_id] += rw_ball_dist
             self.reward_shaping_total['ball_dist'] += rw_ball_dist
 

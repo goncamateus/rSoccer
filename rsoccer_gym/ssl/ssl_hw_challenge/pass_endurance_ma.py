@@ -1,4 +1,3 @@
-import math
 import random
 from typing import Dict
 
@@ -6,6 +5,7 @@ import gym
 import numpy as np
 from rsoccer_gym.Entities import Ball, Frame, Robot
 from rsoccer_gym.ssl.ssl_gym_base import SSLBaseEnv
+from sympy import Line
 
 
 class SSLPassEnduranceMAEnv(SSLBaseEnv):
@@ -56,7 +56,7 @@ class SSLPassEnduranceMAEnv(SSLBaseEnv):
         self.ball_grad_scale = np.linalg.norm([self.field.width/2,
                                                self.field.length/2])/4
         self.ball_dist_scale = np.linalg.norm([self.field.width,
-                                               self.field.length])/4
+                                               self.field.length])
         wheel_max_rad_s = 160
         max_steps = 1200
         self.energy_scale = ((wheel_max_rad_s * 4) * max_steps)
@@ -179,7 +179,7 @@ class SSLPassEnduranceMAEnv(SSLBaseEnv):
                                          'ball_grad': 0,
                                          'ball_dist': 0,
                                          'ball_out': 0,
-                                        #  'hold_ball': 0
+                                         #  'hold_ball': 0
                                          }
             for i in range(self.n_robots_blue):
                 self.reward_shaping_total[f'robot_{i}'] = {'energy': 0}
@@ -192,18 +192,12 @@ class SSLPassEnduranceMAEnv(SSLBaseEnv):
         else:
             rw_ball_grad = w_ball_grad * self.__ball_grad_rw()
             rw_ball_dist = self.__ball_dist_rw()/self.ball_dist_scale
-            rw_ball_out = self.__ball_inside()*10
+            rw_ball_out = self.__ball_inside()
             if rw_ball_out < 0:
                 done = True
-            rw_hold_ball = 0
-            # if self.steps > 120:
-            #     rw_hold_ball = self.__holding_rw()*0.05
             reward[self.shooter_id] += rw_ball_grad
-            # reward[self.shooter_id] += rw_ball_out
-            # reward[self.shooter_id] += rw_hold_ball
             self.reward_shaping_total['ball_grad'] += rw_ball_grad
-            # self.reward_shaping_total['ball_out'] += rw_ball_out
-            # self.reward_shaping_total['hold_ball'] += rw_hold_ball
+            self.reward_shaping_total['ball_out'] += rw_ball_out
             reward[self.receiver_id] += rw_ball_dist
             self.reward_shaping_total['ball_dist'] += rw_ball_dist
 
@@ -214,7 +208,7 @@ class SSLPassEnduranceMAEnv(SSLBaseEnv):
 
         if self.__bad_state():
             for i in range(self.n_robots_blue):
-                reward[i] = -1
+                reward[i] = -10
             done = True
         return reward, done
 
@@ -251,7 +245,7 @@ class SSLPassEnduranceMAEnv(SSLBaseEnv):
         half_len = self.field.length / 2
         half_wid = self.field.width / 2
         if abs(ball[1]) > half_wid or abs(ball[0]) > half_len:
-            return -1
+            return -10
         return 0
 
     def __bad_state(self):
@@ -292,7 +286,6 @@ class SSLPassEnduranceMAEnv(SSLBaseEnv):
         last_ball_pos = np.array([last_ball.x, last_ball.y])
         last_ball_dist = np.linalg.norm(goal - last_ball_pos)
 
-
         # Check if goal_grad > ball_grad
         goal_run = np.linalg.norm(goal - last_goal)
         ball_run = np.linalg.norm(ball_pos - last_ball_pos)
@@ -320,20 +313,25 @@ class SSLPassEnduranceMAEnv(SSLBaseEnv):
         assert(self.last_frame is not None)
 
         # Calculate new ball dist
-        ball = self.frame.ball
-        robot = self.frame.robots_blue[self.receiver_id]
-        ball_pos = np.array([ball.x, ball.y])
-        robot_pos = np.array([robot.x, robot.y])
-        ball_dist = np.linalg.norm(robot_pos - ball_pos)
 
+        ball_pos = np.array([self.frame.ball.x, self.frame.ball.y])
+        robot_pos = np.array([self.frame.robots_blue[self.receiver_id].x,
+                              self.frame.robots_blue[self.receiver_id].y])
+        ball_vel = np.array([self.frame.ball.v_x, self.frame.ball.v_y])
+        robot_vel = np.array([self.frame.robots_blue[self.receiver_id].v_x,
+                              self.frame.robots_blue[self.receiver_id].v_y])
+        ball_vel_norm = np.linalg.norm(ball_vel)
+        robot_vel_norm = np.linalg.norm(robot_vel)
+        if abs(ball_vel_norm) <= 0.01 or abs(robot_vel_norm) <= 0.01:
+            ball_dist = np.linalg.norm(robot_pos - ball_pos)
+        else:
+            x = np.arange(1, 1001)
+            ball_dist = last_dist = 1000000
+            for i in x:
+                pb = ball_pos + ball_vel*i
+                pr = robot_pos + robot_vel*i
+                last_dist = ball_dist
+                ball_dist = np.linalg.norm(pb-pr)
+                if ball_dist > last_dist:
+                    break
         return -ball_dist
-
-    # def __holding_rw(self):
-    #     ball_pos = np.array([self.frame.ball.x, self.frame.ball.y])
-    #     shooter = np.array([self.frame.robots_blue[self.shooter_id].x,
-    #                         self.frame.robots_blue[self.shooter_id].y])
-    #     dist_to_shooter = np.linalg.norm(ball_pos - shooter)
-    #     if dist_to_shooter > 0.2:
-    #         return 0
-    #     else:
-    #         return -1

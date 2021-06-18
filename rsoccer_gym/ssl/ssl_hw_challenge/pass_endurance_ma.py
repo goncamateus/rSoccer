@@ -195,7 +195,7 @@ class SSLPassEnduranceMAEnv(SSLBaseEnv):
             rw_ball_out = self.__ball_inside()
             if rw_ball_out < 0:
                 done = True
-            reward[self.shooter_id] += rw_ball_grad
+            reward[self.shooter_id] += rw_ball_grad + rw_ball_out
             self.reward_shaping_total['ball_grad'] += rw_ball_grad
             self.reward_shaping_total['ball_out'] += rw_ball_out
             reward[self.receiver_id] += rw_ball_dist
@@ -245,7 +245,7 @@ class SSLPassEnduranceMAEnv(SSLBaseEnv):
         half_len = self.field.length / 2
         half_wid = self.field.width / 2
         if abs(ball[1]) > half_wid or abs(ball[0]) > half_len:
-            return -10
+            return -1
         return 0
 
     def __bad_state(self):
@@ -285,12 +285,6 @@ class SSLPassEnduranceMAEnv(SSLBaseEnv):
         ball_pos = np.array([ball.x, ball.y])
         last_ball_pos = np.array([last_ball.x, last_ball.y])
         last_ball_dist = np.linalg.norm(goal - last_ball_pos)
-
-        # Check if goal_grad > ball_grad
-        goal_run = np.linalg.norm(goal - last_goal)
-        ball_run = np.linalg.norm(ball_pos - last_ball_pos)
-        if goal_run >= ball_run:
-            return -0.1
 
         # Calculate new ball dist
         ball_dist = np.linalg.norm(goal - ball_pos)

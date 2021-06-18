@@ -273,10 +273,6 @@ class SSLPassEnduranceMAEnv(SSLBaseEnv):
     def __ball_grad_rw(self):
         assert(self.last_frame is not None)
 
-        # Goal pos
-        self.goal = np.array([self.frame.robots_blue[self.receiver_id].x,
-                         self.frame.robots_blue[self.receiver_id].y])
-
         # Calculate previous ball dist
         last_ball = self.last_frame.ball
         ball = self.frame.ball

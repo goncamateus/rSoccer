@@ -176,9 +176,9 @@ class VSSStratEnv(VSSBaseEnv):
                 # Calculate Energy penalty
                 energy_penalty = self.__energy_penalty()
 
-                reward[0] = self.weights[0] * move_reward
-                reward[1] = self.weights[1] * grad_ball_potential
-                reward[2] = self.weights[2] * energy_penalty
+                reward[0] = move_reward
+                reward[1] = grad_ball_potential
+                reward[2] = energy_penalty
 
                 self.reward_shaping_total['move'] += self.weights[0] * move_reward
                 self.reward_shaping_total['ball_grad'] += self.weights[1] \

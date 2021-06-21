@@ -79,3 +79,8 @@ register(id='SSLPassEnduranceMA-v0',
          entry_point='rsoccer_gym.ssl.ssl_hw_challenge:SSLPassEnduranceMAEnv',
          max_episode_steps=1200
          )
+
+register(id='VSSStrat-v0',
+         entry_point='rsoccer_gym.vss.env_vss:VSSStratEnv',
+         max_episode_steps=1200
+         )

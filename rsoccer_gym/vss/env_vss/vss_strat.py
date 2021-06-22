@@ -68,6 +68,10 @@ class VSSStratEnv(VSSBaseEnv):
         self.reward_shaping_total = None
         self.v_wheel_deadzone = 0.05
         self.weights = np.array([0.2, 0.8, 2e-4, 10])
+        self.max_energy = 93
+        self.max_grad = 2.4
+        self.max_move = 1.2
+
 
         self.ou_actions = []
         for i in range(self.n_robots_blue + self.n_robots_yellow):
@@ -279,7 +283,7 @@ class VSSStratEnv(VSSBaseEnv):
 
         self.previous_ball_potential = ball_potential
 
-        return grad_ball_potential
+        return grad_ball_potential/self.max_grad
 
     def __move_reward(self):
         '''Calculate Move to ball reward
@@ -298,8 +302,7 @@ class VSSStratEnv(VSSBaseEnv):
 
         move_reward = np.dot(robot_ball, robot_vel)
 
-        move_reward = np.clip(move_reward / 0.4, -5.0, 5.0)
-        return move_reward
+        return move_reward/self.max_move
 
     def __energy_penalty(self):
         '''Calculates the energy penalty'''
@@ -307,4 +310,4 @@ class VSSStratEnv(VSSBaseEnv):
         en_penalty_1 = abs(self.sent_commands[0].v_wheel0)
         en_penalty_2 = abs(self.sent_commands[0].v_wheel1)
         energy_penalty = - (en_penalty_1 + en_penalty_2)
-        return energy_penalty
+        return energy_penalty/self.max_energy

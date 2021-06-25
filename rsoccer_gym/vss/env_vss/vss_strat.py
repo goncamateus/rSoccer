@@ -184,9 +184,9 @@ class VSSStratEnv(VSSBaseEnv):
                 reward[1] = grad_ball_potential
                 reward[2] = energy_penalty
 
-                self.reward_shaping_total['move'] += move_reward
-                self.reward_shaping_total['ball_grad'] += grad_ball_potential
-                self.reward_shaping_total['energy'] += energy_penalty
+                self.reward_shaping_total['move'] += move_reward * self.weights[0]
+                self.reward_shaping_total['ball_grad'] += grad_ball_potential * self.weights[1]
+                self.reward_shaping_total['energy'] += energy_penalty * self.weights[2]
 
         return reward, goal
 

@@ -70,8 +70,7 @@ class VSSStratEnv(VSSBaseEnv):
         self.max_energy = 93*620
         self.max_grad = 2.4*40
         self.max_move = 1.2*45
-        self.weights = np.array([0.2, 0.75, 0.05, 10])
-
+        self.weights = np.array([0.306, 0.564, 0.049, 0.081])
 
         self.ou_actions = []
         for i in range(self.n_robots_blue + self.n_robots_yellow):

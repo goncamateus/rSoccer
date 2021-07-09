@@ -67,9 +67,9 @@ class VSSStratEnv(VSSBaseEnv):
         self.actions: Dict = None
         self.reward_shaping_total = None
         self.v_wheel_deadzone = 0.05
-        self.max_energy = 93*620
-        self.max_grad = 2.4*40
-        self.max_move = 1.2*45
+        self.max_energy = 93
+        self.max_grad = 2.4
+        self.max_move = 1.2
         self.weights = np.array([0.306, 0.564, 0.049, 0.081])
 
         self.ou_actions = []
@@ -151,7 +151,7 @@ class VSSStratEnv(VSSBaseEnv):
         return commands
 
     def _calculate_reward_and_done(self):
-        reward = np.zeros(4)
+        reward = 0
         goal = False
         if self.reward_shaping_total is None:
             self.reward_shaping_total = {'goal_score': 0, 'move': 0,
@@ -162,12 +162,12 @@ class VSSStratEnv(VSSBaseEnv):
         if self.frame.ball.x > (self.field.length / 2):
             self.reward_shaping_total['goal_score'] += 1
             self.reward_shaping_total['goals_blue'] += 1
-            reward[-1] = 1
+            reward = self.weights[-1]
             goal = True
         elif self.frame.ball.x < -(self.field.length / 2):
             self.reward_shaping_total['goal_score'] -= 1
             self.reward_shaping_total['goals_yellow'] += 1
-            reward[-1] = -1
+            reward = -self.weights[-1]
             goal = True
         else:
 
@@ -179,13 +179,13 @@ class VSSStratEnv(VSSBaseEnv):
                 # Calculate Energy penalty
                 energy_penalty = self.__energy_penalty()
 
-                reward[0] = move_reward
-                reward[1] = grad_ball_potential
-                reward[2] = energy_penalty
+                reward += move_reward * self.weights[0]
+                reward += grad_ball_potential * self.weights[1]
+                reward += energy_penalty * self.weights[2]
 
-                self.reward_shaping_total['move'] += move_reward
-                self.reward_shaping_total['ball_grad'] += grad_ball_potential
-                self.reward_shaping_total['energy'] += energy_penalty
+                self.reward_shaping_total['move'] += move_reward * self.weights[0]
+                self.reward_shaping_total['ball_grad'] += grad_ball_potential * self.weights[1]
+                self.reward_shaping_total['energy'] += energy_penalty * self.weights[2]
 
         return reward, goal
 

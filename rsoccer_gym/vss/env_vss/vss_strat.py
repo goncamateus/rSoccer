@@ -67,9 +67,9 @@ class VSSStratEnv(VSSBaseEnv):
         self.actions: Dict = None
         self.reward_shaping_total = None
         self.v_wheel_deadzone = 0.05
-        self.max_energy = 93
-        self.max_grad = 2.4
-        self.max_move = 1.2
+        self.max_energy = 93*620
+        self.max_grad = 2.4*30
+        self.max_move = 1.2*45
         self.weights = np.array([0.306, 0.564, 0.049, 0.081])
 
         self.ou_actions = []
@@ -179,13 +179,13 @@ class VSSStratEnv(VSSBaseEnv):
                 # Calculate Energy penalty
                 energy_penalty = self.__energy_penalty()
 
-                reward += move_reward * self.weights[0]
-                reward += grad_ball_potential * self.weights[1]
-                reward += energy_penalty * self.weights[2]
+                reward += move_reward
+                reward += grad_ball_potential
+                reward += energy_penalty
 
-                self.reward_shaping_total['move'] += move_reward * self.weights[0]
-                self.reward_shaping_total['ball_grad'] += grad_ball_potential * self.weights[1]
-                self.reward_shaping_total['energy'] += energy_penalty * self.weights[2]
+                self.reward_shaping_total['move'] += move_reward
+                self.reward_shaping_total['ball_grad'] += grad_ball_potential
+                self.reward_shaping_total['energy'] += energy_penalty
 
         return reward, goal
 

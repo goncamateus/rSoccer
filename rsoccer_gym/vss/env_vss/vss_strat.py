@@ -69,7 +69,7 @@ class VSSStratEnv(VSSBaseEnv):
         self.v_wheel_deadzone = 0.05
         self.max_energy = 93*620
         self.max_grad = 112.5
-        self.max_move = 1450
+        self.max_move = 1.2*45
         self.weights = np.array([0.602, 0.335, 0.024, 0.039])
 
         self.ou_actions = []

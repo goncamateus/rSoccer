@@ -68,9 +68,9 @@ class VSSStratEnv(VSSBaseEnv):
         self.reward_shaping_total = None
         self.v_wheel_deadzone = 0.05
         self.max_energy = 93*620
-        self.max_grad = 2.4*45
-        self.max_move = 1.2*45*6
-        self.weights = np.array([0.289, 0.596, 0.043, 0.072])
+        self.max_grad = 112.5
+        self.max_move = 1450
+        self.weights = np.array([0.602, 0.335, 0.024, 0.039])
 
         self.ou_actions = []
         for i in range(self.n_robots_blue + self.n_robots_yellow):

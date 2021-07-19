@@ -67,9 +67,9 @@ class VSSStratEnv(VSSBaseEnv):
         self.actions: Dict = None
         self.reward_shaping_total = None
         self.v_wheel_deadzone = 0.05
-        self.max_energy = 93*620
-        self.max_grad = 2.4*40
-        self.max_move = 1.2*45
+        self.max_energy = 93
+        self.max_grad = 2.4
+        self.max_move = 1.2
         self.weights = np.array([0.2, 0.75, 0.05, 10])
 
         self.ou_actions = []

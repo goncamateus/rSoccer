@@ -67,10 +67,10 @@ class VSSStratEnv(VSSBaseEnv):
         self.actions: Dict = None
         self.reward_shaping_total = None
         self.v_wheel_deadzone = 0.05
-        self.max_energy = 93*1000
-        self.max_grad = 2.4*46
-        self.max_move = 1.2*396
-        self.weights = np.array([0.018,0.068,0.002,0.911])
+        self.max_energy = 600
+        self.max_grad = 1.63
+        self.max_move = 1.98
+        self.weights = np.array([0.018, 0.068, 0.002, 0.911])
 
         self.ou_actions = []
         for i in range(self.n_robots_blue + self.n_robots_yellow):
@@ -252,53 +252,43 @@ class VSSStratEnv(VSSBaseEnv):
         return left_wheel_speed, right_wheel_speed
 
     def __ball_grad(self):
-        '''Calculate ball potential gradient
-        Difference of potential of the ball in time_step seconds.
-        '''
-        # Calculate ball potential
-        length_cm = self.field.length * 100
-        half_lenght = (self.field.length / 2.0)\
-            + self.field.goal_depth
-
-        # distance to defence
-        dx_d = (half_lenght + self.frame.ball.x) * 100
-        # distance to attack
-        dx_a = (half_lenght - self.frame.ball.x) * 100
-        dy = (self.frame.ball.y) * 100
-
-        dist_1 = -math.sqrt(dx_a ** 2 + 2 * dy ** 2)
-        dist_2 = math.sqrt(dx_d ** 2 + 2 * dy ** 2)
-        ball_potential = ((dist_1 + dist_2) / length_cm - 1) / 2
-
-        grad_ball_potential = 0
-        # Calculate ball potential gradient
-        # = actual_potential - previous_potential
-        if self.previous_ball_potential is not None:
-            diff = ball_potential - self.previous_ball_potential
-            grad_ball_potential = np.clip(diff * 3 / self.time_step,
-                                          -5.0, 5.0)
-
-        self.previous_ball_potential = ball_potential
-
-        return grad_ball_potential/self.max_grad
+        assert(self.last_frame is not None)
+        
+        # Calculate previous ball dist
+        last_ball = self.last_frame.ball
+        last_ball_pos = np.array([last_ball.x, last_ball.y])
+        goal_pos = np.array([self.field.length / 2, 0])
+        last_ball_dist = np.linalg.norm(goal_pos - last_ball_pos)
+        
+        # Calculate new ball dist
+        ball = self.frame.ball
+        ball_pos = np.array([ball.x, ball.y])
+        ball_dist = np.linalg.norm(goal_pos - ball_pos)
+        
+        ball_dist_rw = last_ball_dist - ball_dist
+        
+        return ball_dist_rw/self.max_grad
 
     def __move_reward(self):
-        '''Calculate Move to ball reward
+        assert(self.last_frame is not None)
 
-        Cosine between the robot vel vector and the vector robot -> ball.
-        This indicates rather the robot is moving towards the ball or not.
-        '''
+        # Calculate previous ball dist
+        last_ball = self.last_frame.ball
+        last_robot = self.last_frame.robots_blue[0]
+        last_ball_pos = np.array([last_ball.x, last_ball.y])
+        last_robot_pos = np.array([last_robot.x, last_robot.y])
+        last_ball_dist = np.linalg.norm(last_robot_pos - last_ball_pos)
 
-        ball = np.array([self.frame.ball.x, self.frame.ball.y])
-        robot = np.array([self.frame.robots_blue[0].x,
-                          self.frame.robots_blue[0].y])
-        robot_vel = np.array([self.frame.robots_blue[0].v_x,
-                              self.frame.robots_blue[0].v_y])
-        robot_ball = ball - robot
-        robot_ball = robot_ball/np.linalg.norm(robot_ball)
+        # Calculate new ball dist
+        ball = self.frame.ball
+        robot = self.frame.robots_blue[0]
+        ball_pos = np.array([ball.x, ball.y])
+        robot_pos = np.array([robot.x, robot.y])
+        ball_dist = np.linalg.norm(robot_pos - ball_pos)
 
-        move_reward = np.dot(robot_ball, robot_vel)
-        return move_reward/self.max_move
+        ball_dist_rw = last_ball_dist - ball_dist
+
+        return ball_dist_rw/self.max_move
 
     def __energy_penalty(self):
         '''Calculates the energy penalty'''

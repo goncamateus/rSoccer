@@ -53,14 +53,14 @@ class VSSStratEnv(VSSBaseEnv):
     """
 
     def __init__(self):
-        super().__init__(field_type=0, n_robots_blue=3, n_robots_yellow=3,
-                         time_step=0.025)
+        super().__init__(
+            field_type=0, n_robots_blue=3, n_robots_yellow=3, time_step=0.025
+        )
 
-        self.action_space = gym.spaces.Box(low=-1, high=1,
-                                           shape=(2, ), dtype=np.float32)
-        self.observation_space = gym.spaces.Box(low=-self.NORM_BOUNDS,
-                                                high=self.NORM_BOUNDS,
-                                                shape=(40, ), dtype=np.float32)
+        self.action_space = gym.spaces.Box(low=-1, high=1, shape=(2,), dtype=np.float32)
+        self.observation_space = gym.spaces.Box(
+            low=-self.NORM_BOUNDS, high=self.NORM_BOUNDS, shape=(40,), dtype=np.float32
+        )
 
         # Initialize Class Atributes
         self.previous_ball_potential = None
@@ -68,9 +68,9 @@ class VSSStratEnv(VSSBaseEnv):
         self.reward_shaping_total = None
         self.v_wheel_deadzone = 0.05
         self.max_energy = 93
-        self.max_grad = 2.4
-        self.max_move = 1.2
-        self.weights = np.array([0.2, 0.75, 0.05, 10])
+        self.max_grad = self.max_v * self.time_step
+        self.max_move = self.max_v * self.time_step
+        self.weights = np.array([0.5, 0.5, 0, 10])
 
         self.ou_actions = []
         for i in range(self.n_robots_blue + self.n_robots_yellow):
@@ -78,7 +78,7 @@ class VSSStratEnv(VSSBaseEnv):
                 OrnsteinUhlenbeckAction(self.action_space, dt=self.time_step)
             )
 
-        print('Environment initialized')
+        print("Environment initialized")
 
     def reset(self):
         self.actions = None
@@ -105,12 +105,8 @@ class VSSStratEnv(VSSBaseEnv):
         for i in range(self.n_robots_blue):
             observation.append(self.norm_pos(self.frame.robots_blue[i].x))
             observation.append(self.norm_pos(self.frame.robots_blue[i].y))
-            observation.append(
-                np.sin(np.deg2rad(self.frame.robots_blue[i].theta))
-            )
-            observation.append(
-                np.cos(np.deg2rad(self.frame.robots_blue[i].theta))
-            )
+            observation.append(np.sin(np.deg2rad(self.frame.robots_blue[i].theta)))
+            observation.append(np.cos(np.deg2rad(self.frame.robots_blue[i].theta)))
             observation.append(self.norm_v(self.frame.robots_blue[i].v_x))
             observation.append(self.norm_v(self.frame.robots_blue[i].v_y))
             observation.append(self.norm_w(self.frame.robots_blue[i].v_theta))
@@ -120,9 +116,7 @@ class VSSStratEnv(VSSBaseEnv):
             observation.append(self.norm_pos(self.frame.robots_yellow[i].y))
             observation.append(self.norm_v(self.frame.robots_yellow[i].v_x))
             observation.append(self.norm_v(self.frame.robots_yellow[i].v_y))
-            observation.append(
-                self.norm_w(self.frame.robots_yellow[i].v_theta)
-            )
+            observation.append(self.norm_w(self.frame.robots_yellow[i].v_theta))
 
         return np.array(observation, dtype=np.float32)
 
@@ -132,21 +126,22 @@ class VSSStratEnv(VSSBaseEnv):
 
         self.actions[0] = actions
         v_wheel0, v_wheel1 = self._actions_to_v_wheels(actions)
-        commands.append(Robot(yellow=False, id=0, v_wheel0=v_wheel0,
-                              v_wheel1=v_wheel1))
+        commands.append(Robot(yellow=False, id=0, v_wheel0=v_wheel0, v_wheel1=v_wheel1))
 
         # Send random commands to the other robots
         for i in range(1, self.n_robots_blue):
             actions = self.ou_actions[i].sample()
             self.actions[i] = actions
             v_wheel0, v_wheel1 = self._actions_to_v_wheels(actions)
-            commands.append(Robot(yellow=False, id=i, v_wheel0=v_wheel0,
-                                  v_wheel1=v_wheel1))
+            commands.append(
+                Robot(yellow=False, id=i, v_wheel0=v_wheel0, v_wheel1=v_wheel1)
+            )
         for i in range(self.n_robots_yellow):
-            actions = self.ou_actions[self.n_robots_blue+i].sample()
+            actions = self.ou_actions[self.n_robots_blue + i].sample()
             v_wheel0, v_wheel1 = self._actions_to_v_wheels(actions)
-            commands.append(Robot(yellow=True, id=i, v_wheel0=v_wheel0,
-                                  v_wheel1=v_wheel1))
+            commands.append(
+                Robot(yellow=True, id=i, v_wheel0=v_wheel0, v_wheel1=v_wheel1)
+            )
 
         return commands
 
@@ -154,19 +149,24 @@ class VSSStratEnv(VSSBaseEnv):
         reward = np.zeros(4)
         goal = False
         if self.reward_shaping_total is None:
-            self.reward_shaping_total = {'goal_score': 0, 'move': 0,
-                                         'ball_grad': 0, 'energy': 0,
-                                         'goals_blue': 0, 'goals_yellow': 0}
+            self.reward_shaping_total = {
+                "goal_score": 0,
+                "move": 0,
+                "ball_grad": 0,
+                "energy": 0,
+                "goals_blue": 0,
+                "goals_yellow": 0,
+            }
 
         # Check if goal ocurred
         if self.frame.ball.x > (self.field.length / 2):
-            self.reward_shaping_total['goal_score'] += 1
-            self.reward_shaping_total['goals_blue'] += 1
+            self.reward_shaping_total["goal_score"] += 1
+            self.reward_shaping_total["goals_blue"] += 1
             reward[3] = 1
             goal = True
         elif self.frame.ball.x < -(self.field.length / 2):
-            self.reward_shaping_total['goal_score'] -= 1
-            self.reward_shaping_total['goals_yellow'] += 1
+            self.reward_shaping_total["goal_score"] -= 1
+            self.reward_shaping_total["goals_yellow"] += 1
             reward[3] = -1
             goal = True
         else:
@@ -183,24 +183,27 @@ class VSSStratEnv(VSSBaseEnv):
                 reward[1] = grad_ball_potential
                 reward[2] = energy_penalty
 
-                self.reward_shaping_total['move'] += move_reward
-                self.reward_shaping_total['ball_grad'] += grad_ball_potential
-                self.reward_shaping_total['energy'] += energy_penalty
+                self.reward_shaping_total["move"] += move_reward * self.weights[0]
+                self.reward_shaping_total["ball_grad"] += (
+                    grad_ball_potential * self.weights[1]
+                )
+                self.reward_shaping_total["energy"] += energy_penalty * self.weights[2]
 
         return reward, goal
 
     def _get_initial_positions_frame(self):
-        '''Returns the position of each robot and ball for the initial frame'''
+        """Returns the position of each robot and ball for the initial frame"""
         field_half_length = self.field.length / 2
         field_half_width = self.field.width / 2
 
-        def x(): return random.uniform(-field_half_length + 0.1,
-                                       field_half_length - 0.1)
+        def x():
+            return random.uniform(-field_half_length + 0.1, field_half_length - 0.1)
 
-        def y(): return random.uniform(-field_half_width + 0.1,
-                                       field_half_width - 0.1)
+        def y():
+            return random.uniform(-field_half_width + 0.1, field_half_width - 0.1)
 
-        def theta(): return random.uniform(0, 360)
+        def theta():
+            return random.uniform(0, 360)
 
         pos_frame: Frame = Frame()
 
@@ -225,8 +228,7 @@ class VSSStratEnv(VSSBaseEnv):
                 pos = (x(), y())
 
             places.insert(pos)
-            pos_frame.robots_yellow[i] = Robot(
-                x=pos[0], y=pos[1], theta=theta())
+            pos_frame.robots_yellow[i] = Robot(x=pos[0], y=pos[1], theta=theta())
 
         return pos_frame
 
@@ -252,53 +254,45 @@ class VSSStratEnv(VSSBaseEnv):
         return left_wheel_speed, right_wheel_speed
 
     def __ball_grad(self):
-        '''Calculate ball potential gradient
-        Difference of potential of the ball in time_step seconds.
-        '''
-        # Calculate ball potential
-        length_cm = self.field.length * 100
-        half_lenght = (self.field.length / 2.0)\
-            + self.field.goal_depth
+        assert self.last_frame is not None
 
-        # distance to defence
-        dx_d = (half_lenght + self.frame.ball.x) * 100
-        # distance to attack
-        dx_a = (half_lenght - self.frame.ball.x) * 100
-        dy = (self.frame.ball.y) * 100
+        # Calculate previous ball dist
+        last_ball = self.last_frame.ball
+        last_ball_pos = np.array([last_ball.x, last_ball.y])
+        goal_pos = np.array([self.field.length / 2, 0])
+        last_ball_dist = np.linalg.norm(goal_pos - last_ball_pos)
 
-        dist_1 = -math.sqrt(dx_a ** 2 + 2 * dy ** 2)
-        dist_2 = math.sqrt(dx_d ** 2 + 2 * dy ** 2)
-        ball_potential = ((dist_1 + dist_2) / length_cm - 1) / 2
+        # Calculate new ball dist
+        ball = self.frame.ball
+        ball_pos = np.array([ball.x, ball.y])
+        ball_dist = np.linalg.norm(goal_pos - ball_pos)
 
-        grad_ball_potential = 0
-        # Calculate ball potential gradient
-        # = actual_potential - previous_potential
-        if self.previous_ball_potential is not None:
-            diff = ball_potential - self.previous_ball_potential
-            grad_ball_potential = np.clip(diff * 3 / self.time_step,
-                                          -5.0, 5.0)
+        ball_dist_rw = last_ball_dist - ball_dist
 
-        self.previous_ball_potential = ball_potential
-
-        return grad_ball_potential/self.max_grad
+        return ball_dist_rw / self.max_grad
 
     def __move_reward(self):
-        '''Calculate Move to ball reward
+        """Calculate Move to ball reward
 
         Cosine between the robot vel vector and the vector robot -> ball.
         This indicates rather the robot is moving towards the ball or not.
-        '''
+        """
 
         ball = np.array([self.frame.ball.x, self.frame.ball.y])
-        robot = np.array([self.frame.robots_blue[0].x,
-                          self.frame.robots_blue[0].y])
-        robot_vel = np.array([self.frame.robots_blue[0].v_x,
-                              self.frame.robots_blue[0].v_y])
-        robot_ball = ball - robot
-        robot_ball = robot_ball/np.linalg.norm(robot_ball)
+        robot = np.array([self.frame.robots_blue[0].x, self.frame.robots_blue[0].y])
 
-        move_reward = np.dot(robot_ball, robot_vel)
-        return move_reward/self.max_move
+        last_ball = np.array([self.last_frame.ball.x, self.last_frame.ball.y])
+        last_robot = np.array(
+            [self.last_frame.robots_blue[0].x, self.last_frame.robots_blue[0].y]
+        )
+
+        robot_ball = ball - robot
+        last_robot_ball = last_ball - last_robot
+
+        robot_ball_dist = np.linalg.norm(robot_ball)
+        last_robot_ball_dist = np.linalg.norm(last_robot_ball)
+        move_reward = robot_ball_dist - last_robot_ball_dist
+        return move_reward / self.max_move
 
     def __energy_penalty(self):
         '''Calculates the energy penalty'''
@@ -306,4 +300,5 @@ class VSSStratEnv(VSSBaseEnv):
         en_penalty_1 = abs(self.sent_commands[0].v_wheel0)
         en_penalty_2 = abs(self.sent_commands[0].v_wheel1)
         energy_penalty = - (en_penalty_1 + en_penalty_2)
-        return energy_penalty/self.max_energy
+        return energy_penalty
+

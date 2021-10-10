@@ -162,22 +162,22 @@ class VSSStratEnv(VSSBaseEnv):
         if self.frame.ball.x > (self.field.length / 2):
             self.reward_shaping_total["goal_score"] += 1
             self.reward_shaping_total["goals_blue"] += 1
-            reward[3] += self.weights[3]
+            reward[3] += 1
             goal = True
         elif self.frame.ball.x < -(self.field.length / 2):
             self.reward_shaping_total["goal_score"] -= 1
             self.reward_shaping_total["goals_yellow"] += 1
-            reward[3] += -self.weights[3]
+            reward[3] += -1
             goal = True
         else:
 
             if self.last_frame is not None:
                 # Calculate Move ball
-                move_reward = self.__move_reward() * self.weights[0]
+                move_reward = self.__move_reward()
                 # Calculate ball potential
-                grad_ball_potential = self.__ball_grad() * self.weights[1]
+                grad_ball_potential = self.__ball_grad()
                 # Calculate Energy penalty
-                energy_penalty = self.__energy_penalty() * self.weights[2]
+                energy_penalty = self.__energy_penalty()
 
                 reward[0] += move_reward
                 reward[1] += grad_ball_potential

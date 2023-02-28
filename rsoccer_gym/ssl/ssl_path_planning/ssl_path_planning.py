@@ -9,10 +9,9 @@ from rsoccer_gym.Entities import Ball, Frame, Robot
 from rsoccer_gym.ssl.ssl_gym_base import SSLBaseEnv
 from rsoccer_gym.Utils import KDTree
 
-
 ANGLE_TOLERANCE: float = np.deg2rad(7.5)
 SPEED_TOLERANCE: float = 0.01  # m/s == 1 cm/s
-
+DIST_TOLERANCE: float = 0.2  # m == 20 cm
 
 class SSLPathPlanningEnv(SSLBaseEnv):
     """The SSL robot needs to reach the target point with a given angle"""
@@ -24,7 +23,7 @@ class SSLPathPlanningEnv(SSLBaseEnv):
         self.action_space = gym.spaces.Box(low=-1, high=1,  # hyp tg.
                                            shape=(4, ), dtype=np.float32)
 
-        n_obs = 4 + 4 + 7*self.n_robots_blue + 2*self.n_robots_yellow
+        n_obs = 5 + 4 + 7*self.n_robots_blue + 2*self.n_robots_yellow
         self.observation_space = gym.spaces.Box(low=-self.NORM_BOUNDS,
                                                 high=self.NORM_BOUNDS,
                                                 shape=(n_obs, ),
@@ -36,8 +35,37 @@ class SSLPathPlanningEnv(SSLBaseEnv):
 
         self.target_point: Point2D = Point2D(0, 0)
         self.target_angle: float = 0.0
+        self.target_speed: float = 0.0
+
+        self.reward_info = {
+            'cumulative_dist_reward': 0,
+            'cumulative_angle_reward': 0,
+            'cumulative_speed_reward': 0,
+            'total_reward': 0,
+
+            'dist_error': 0,
+            'angle_error': 0,
+            'speed_error': 0,
+        }
 
         print('Environment initialized')
+    
+    def reset(self):
+        self.reward_info = {
+            'cumulative_dist_reward': 0,
+            'cumulative_angle_reward': 0,
+            'cumulative_speed_reward': 0,
+            'total_reward': 0,
+
+            'dist_error': 0,
+            'angle_error': 0,
+            'speed_error': 0,
+        }
+        return super().reset()
+    
+    def step(self, action):
+        observation, reward, done, _ = super().step(action)
+        return observation, reward, done, self.reward_info
 
     def _frame_to_observations(self):
         observation = list()
@@ -46,6 +74,7 @@ class SSLPathPlanningEnv(SSLBaseEnv):
         observation.append(self.norm_pos(self.target_point.y))
         observation.append(np.sin(self.target_angle))
         observation.append(np.cos(self.target_angle))
+        observation.append(self.norm_v(self.target_speed))
 
         observation.append(self.norm_pos(self.frame.ball.x))
         observation.append(self.norm_pos(self.frame.ball.y))
@@ -87,7 +116,6 @@ class SSLPathPlanningEnv(SSLBaseEnv):
         robot = self.frame.robots_blue[0]
         angle = np.deg2rad(robot.theta)
         position = Point2D(x=robot.x * 1000.0, y=robot.y * 1000.0)
-        velocity = Point2D(x=robot.v_x * 1000.0, y=robot.v_y * 1000.0)
 
         result = go_to_point(agent_position=position,
                              agent_angle=angle,
@@ -104,9 +132,9 @@ class SSLPathPlanningEnv(SSLBaseEnv):
         ]
 
     def is_v_in_range(self, current, target) -> bool:
-        return -SPEED_TOLERANCE <= current - target <= SPEED_TOLERANCE
+        return abs(current - target) <= SPEED_TOLERANCE
 
-    def reward_function(self, robot_pos: Point2D, last_robot_pos: Point2D, robot_vel: Point2D, robot_angle: float, target_pos: Point2D, target_angle: float):
+    def reward_function(self, robot_pos: Point2D, last_robot_pos: Point2D, robot_vel: Point2D, robot_angle: float, target_pos: Point2D, target_angle: float, target_speed: float):
         max_dist = np.sqrt(self.field.length ** 2 + self.field.width ** 2)
 
         last_dist_robot_to_target = dist_to(target_pos, last_robot_pos)
@@ -118,11 +146,27 @@ class SSLPathPlanningEnv(SSLBaseEnv):
 
         robot_speed = length(robot_vel)
 
-        if abs_smallest_angle_diff(robot_angle, target_angle) < ANGLE_TOLERANCE:
-            if dist_robot_to_target < 0.2:
-                return 0.125 if self.is_v_in_range(robot_speed, 0) else 0.0, True
-            return 0.75 * (last_dist_robot_to_target - dist_robot_to_target) / max_dist, False
-        return 0.125 * (last_angle_error - angle_error) / np.pi, False
+        angle_reward = 0.125 * (last_angle_error - angle_error) / np.pi
+        dist_reward = 0.75 * (last_dist_robot_to_target - dist_robot_to_target) / max_dist
+        speed_reward =  0.125 if self.is_v_in_range(robot_speed, target_speed) else 0.0
+
+        self.reward_info['dist_error'] = dist_robot_to_target
+        self.reward_info['angle_error'] = angle_error
+        self.reward_info['speed_error'] = abs(robot_speed - target_speed)
+
+        if angle_error <= ANGLE_TOLERANCE:
+            if dist_robot_to_target <= DIST_TOLERANCE:
+                self.reward_info['total_reward'] += speed_reward
+                self.reward_info['cumulative_speed_reward'] += speed_reward
+                return speed_reward, True
+
+            self.reward_info['total_reward'] += dist_reward
+            self.reward_info['cumulative_dist_reward'] += dist_reward
+            return dist_reward, False
+        
+        self.reward_info['total_reward'] += angle_reward
+        self.reward_info['cumulative_angle_reward'] += angle_reward
+        return angle_reward, False
 
     def _calculate_reward_and_done(self):
         robot = self.frame.robots_blue[0]
@@ -133,6 +177,7 @@ class SSLPathPlanningEnv(SSLBaseEnv):
         robot_angle = np.deg2rad(robot.theta)
         target_pos = self.target_point
         target_angle = self.target_angle
+        target_speed = self.target_speed
 
         robot_vel = Point2D(x=robot.v_x, y=robot.v_y)
 
@@ -141,7 +186,8 @@ class SSLPathPlanningEnv(SSLBaseEnv):
                                             robot_vel=robot_vel,
                                             robot_angle=robot_angle,
                                             target_pos=target_pos,
-                                            target_angle=target_angle)
+                                            target_angle=target_angle,
+                                            target_speed=target_speed)
         return reward, done
 
     def _get_initial_positions_frame(self):
@@ -158,6 +204,9 @@ class SSLPathPlanningEnv(SSLBaseEnv):
 
         def get_random_theta():
             return random.uniform(0, 360)
+        
+        def get_random_speed():
+            return random.uniform(0, self.max_v)
 
         pos_frame: Frame = Frame()
 
@@ -165,6 +214,8 @@ class SSLPathPlanningEnv(SSLBaseEnv):
 
         self.target_point = Point2D(x=get_random_x(), y=get_random_y())
         self.target_angle = np.deg2rad(get_random_theta())
+
+        self.target_speed = 0.0 # get_random_speed()
 
         #  TODO: Move RCGymRender to another place
         self.view = RCGymRender(self.n_robots_blue,
@@ -176,7 +227,7 @@ class SSLPathPlanningEnv(SSLBaseEnv):
         self.view.set_target(self.target_point.x, self.target_point.y)
         self.view.set_target_angle(np.rad2deg(self.target_angle))
 
-        min_dist = 0.2
+        min_gen_dist = 0.2
 
         places = KDTree()
         places.insert((self.target_point.x, self.target_point.y))
@@ -185,7 +236,7 @@ class SSLPathPlanningEnv(SSLBaseEnv):
         for i in range(self.n_robots_blue):
             pos = (get_random_x(), get_random_y())
 
-            while places.get_nearest(pos)[1] < min_dist:
+            while places.get_nearest(pos)[1] < min_gen_dist:
                 pos = (get_random_x(), get_random_y())
 
             places.insert(pos)
@@ -194,7 +245,7 @@ class SSLPathPlanningEnv(SSLBaseEnv):
 
         for i in range(self.n_robots_yellow):
             pos = (get_random_x(), get_random_y())
-            while places.get_nearest(pos)[1] < min_dist:
+            while places.get_nearest(pos)[1] < min_gen_dist:
                 pos = (get_random_x(), get_random_y())
 
             places.insert(pos)

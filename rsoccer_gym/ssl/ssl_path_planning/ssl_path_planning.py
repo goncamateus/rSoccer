@@ -46,6 +46,8 @@ class SSLPathPlanningEnv(SSLBaseEnv):
             'dist_error': 0,
             'angle_error': 0,
             'speed_error': 0,
+
+            'current_speed': 0,
         }
 
         print('Environment initialized')
@@ -60,6 +62,8 @@ class SSLPathPlanningEnv(SSLBaseEnv):
             'dist_error': 0,
             'angle_error': 0,
             'speed_error': 0,
+            
+            'current_speed': 0,
         }
         return super().reset()
     
@@ -153,6 +157,8 @@ class SSLPathPlanningEnv(SSLBaseEnv):
         self.reward_info['dist_error'] = dist_robot_to_target
         self.reward_info['angle_error'] = angle_error
         self.reward_info['speed_error'] = abs(robot_speed - target_speed)
+
+        self.reward_info['current_speed'] = robot_speed
 
         if angle_error <= ANGLE_TOLERANCE:
             if dist_robot_to_target <= DIST_TOLERANCE:

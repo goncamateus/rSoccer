@@ -150,11 +150,11 @@ class SSLPathPlanningEnv(SSLBaseEnv):
 
         robot_speed = length(robot_vel)
 
-        angle_reward = 0.125 * (last_angle_error - angle_error) / np.pi
-        dist_reward = 0.875 * (last_dist_robot_to_target - dist_robot_to_target) / max_dist
+        angle_reward = 0.1 * (last_angle_error - angle_error) / np.pi
+        dist_reward = 0.3 * (last_dist_robot_to_target - dist_robot_to_target) / max_dist
 
-        speed_penalty_tmp = -0.125 * abs(robot_speed - target_speed)
-        speed_penalty =  speed_penalty_tmp if not self.is_v_in_range(robot_speed, target_speed) else 0.125
+        speed_penalty_tmp = -0.6 * abs(robot_speed - target_speed)
+        speed_penalty =  speed_penalty_tmp if not self.is_v_in_range(robot_speed, target_speed) else 0.6
 
         self.reward_info['dist_error'] = dist_robot_to_target
         self.reward_info['angle_error'] = angle_error

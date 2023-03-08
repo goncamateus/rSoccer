@@ -158,7 +158,7 @@ class SSLPathPlanningEnv(SSLBaseEnv):
 
         angle_reward = 0.25 * (last_angle_error - angle_error) / np.pi
         dist_reward = 0.5 * (last_dist_robot_to_target - dist_robot_to_target) / max_dist
-        velocity_penalty = 0.25 * (last_robot_velocity_to_target - robot_velocity_to_target) / self.max_v
+        velocity_reward = 0.25 * (last_robot_velocity_to_target - robot_velocity_to_target) / self.max_v
 
         self.reward_info['dist_error'] = dist_robot_to_target
         self.reward_info['angle_error'] = angle_error
@@ -168,19 +168,21 @@ class SSLPathPlanningEnv(SSLBaseEnv):
         self.reward_info['current_velocity_x'] = robot_vel.x
         self.reward_info['current_velocity_y'] = robot_vel.y
 
-        if angle_error <= ANGLE_TOLERANCE:
-            if dist_robot_to_target <= DIST_TOLERANCE:
-                self.reward_info['total_reward'] += velocity_penalty
-                self.reward_info['cumulative_velocity_reward'] += velocity_penalty
-                return velocity_penalty, robot_velocity_to_target <= SPEED_TOLERANCE
+        self.reward_info['total_reward'] += dist_reward
+        self.reward_info['cumulative_dist_reward'] += dist_reward
 
-            self.reward_info['total_reward'] += dist_reward
-            self.reward_info['cumulative_dist_reward'] += dist_reward
-            return dist_reward, False
-        
-        self.reward_info['total_reward'] += angle_reward
-        self.reward_info['cumulative_angle_reward'] += angle_reward
-        return angle_reward, False
+        if dist_robot_to_target <= DIST_TOLERANCE:
+            self.reward_info['total_reward'] += velocity_reward
+            self.reward_info['cumulative_velocity_reward'] += velocity_reward
+
+            if robot_velocity_to_target <= SPEED_TOLERANCE:
+                self.reward_info['total_reward'] += angle_reward
+                self.reward_info['cumulative_angle_reward'] += angle_reward
+                return dist_reward + velocity_reward + angle_reward, angle_error <= ANGLE_TOLERANCE
+
+            return dist_reward + velocity_reward, False
+
+        return dist_reward, False
 
     def _calculate_reward_and_done(self):
         robot = self.frame.robots_blue[0]

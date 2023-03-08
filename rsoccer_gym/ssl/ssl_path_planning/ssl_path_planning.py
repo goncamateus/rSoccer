@@ -179,9 +179,9 @@ class SSLPathPlanningEnv(SSLBaseEnv):
             self.reward_info['cumulative_velocity_reward'] += velocity_reward
 
             if robot_velocity_to_target <= SPEED_TOLERANCE:
-                return dist_reward + angle_reward + velocity_reward, True
+                return angle_reward, angle_error <= ANGLE_TOLERANCE
 
-            return dist_reward + angle_reward + velocity_reward, False
+            return angle_reward + velocity_reward, False
 
         return dist_reward + angle_reward, False
 

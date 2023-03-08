@@ -152,7 +152,7 @@ class SSLPathPlanningEnv(SSLBaseEnv):
 
         angle_reward = 0.25 * (last_angle_error - angle_error) / np.pi
         dist_reward = 0.75 * (last_dist_robot_to_target - dist_robot_to_target) / max_dist
-        speed_penalty =  -0.125 * abs(robot_speed - target_speed)
+        speed_penalty =  0.0
 
         self.reward_info['dist_error'] = dist_robot_to_target
         self.reward_info['angle_error'] = angle_error

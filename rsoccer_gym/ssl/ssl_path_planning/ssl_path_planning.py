@@ -171,18 +171,19 @@ class SSLPathPlanningEnv(SSLBaseEnv):
         self.reward_info['total_reward'] += dist_reward
         self.reward_info['cumulative_dist_reward'] += dist_reward
 
+        self.reward_info['total_reward'] += angle_reward
+        self.reward_info['cumulative_angle_reward'] += angle_reward
+
         if dist_robot_to_target <= DIST_TOLERANCE:
             self.reward_info['total_reward'] += velocity_reward
             self.reward_info['cumulative_velocity_reward'] += velocity_reward
 
             if robot_velocity_to_target <= SPEED_TOLERANCE:
-                self.reward_info['total_reward'] += angle_reward
-                self.reward_info['cumulative_angle_reward'] += angle_reward
-                return dist_reward + velocity_reward + angle_reward, angle_error <= ANGLE_TOLERANCE
+                return dist_reward + angle_reward + velocity_reward, angle_error <= ANGLE_TOLERANCE
 
-            return dist_reward + velocity_reward, False
+            return dist_reward + angle_reward + velocity_reward, False
 
-        return dist_reward, False
+        return dist_reward + angle_reward, False
 
     def _calculate_reward_and_done(self):
         robot = self.frame.robots_blue[0]

@@ -10,7 +10,7 @@ from rsoccer_gym.ssl.ssl_gym_base import SSLBaseEnv
 from rsoccer_gym.Utils import KDTree
 
 ANGLE_TOLERANCE: float = np.deg2rad(7.5) # 7.5 degrees
-SPEED_TOLERANCE: float = 0.05 # m/s == 5 cm/s
+SPEED_TOLERANCE: float = 0.20 # m/s == 20 cm/s
 DIST_TOLERANCE: float = 0.10 # m == 10 cm
 
 class SSLPathPlanningEnv(SSLBaseEnv):

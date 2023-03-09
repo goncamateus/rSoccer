@@ -156,9 +156,9 @@ class SSLPathPlanningEnv(SSLBaseEnv):
         last_robot_velocity_to_target = dist_to(target_vel, last_robot_vel)
         robot_velocity_to_target = dist_to(target_vel, robot_vel)
 
-        angle_reward = 0.25 * (last_angle_error - angle_error) / np.pi
-        dist_reward = 0.25 * (last_dist_robot_to_target - dist_robot_to_target) / max_dist
-        velocity_reward = 0.5 * (last_robot_velocity_to_target - robot_velocity_to_target) / self.max_v
+        angle_reward = 0.125 * (last_angle_error - angle_error) / np.pi
+        dist_reward = 0.75 * (last_dist_robot_to_target - dist_robot_to_target) / max_dist
+        velocity_reward = 0.125 * (last_robot_velocity_to_target - robot_velocity_to_target) / self.max_v
 
         self.reward_info['dist_error'] = dist_robot_to_target
         self.reward_info['angle_error'] = angle_error

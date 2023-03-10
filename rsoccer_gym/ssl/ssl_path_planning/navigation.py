@@ -100,6 +100,7 @@ class GoToPointEntry:
     """Go to point entry"""
     target: Point2D = Point2D(0.0, 0.0)
     target_angle: float = 0.0
+    target_velocity: Point2D = Point2D(0.0, 0.0)
 
     max_velocity: Optional[float] = None
     k_p: Optional[float] = None
@@ -130,18 +131,20 @@ def go_to_point(agent_position: Point2D, agent_angle: float, entry: GoToPointEnt
 
         if distance_to_goal <= min_prop_distance:
             max_velocity = max_velocity * math_map(distance_to_goal, 0.0, min_prop_distance, prop_velocity_factor, 1.0)
+            max_velocity = max(length(entry.target_velocity), max_velocity)
 
-        if distance_to_goal > ADJUST_ANGLE_MIN_DIST:
-            # Uses an angle PID (only proportional for now), and first try to get in the right angle,
-            # using only angular speed and then use linear speed to get into the point
 
-            theta: float = pt_angle(Point2D(entry.target.x - agent_position.x, entry.target.y - agent_position.y))
-            d_theta: float = smallest_angle_diff(agent_angle, entry.target_angle)
+    if distance_to_goal > ADJUST_ANGLE_MIN_DIST:
+        # Uses an angle PID (only proportional for now), and first try to get in the right angle,
+        # using only angular speed and then use linear speed to get into the point
 
-            # Proportional to prioritize the angle correction
-            v_prop: float = abs(smallest_angle_diff(math.pi - ANGLE_EPSILON, d_theta)) * (max_velocity / (math.pi - ANGLE_EPSILON))
-
-            return RobotMove(from_polar(v_prop, theta), k_p * d_theta)
-        
+        theta: float = pt_angle(Point2D(entry.target.x - agent_position.x, entry.target.y - agent_position.y))
         d_theta: float = smallest_angle_diff(agent_angle, entry.target_angle)
-        return RobotMove(Point2D(0.0, 0.0), k_p * d_theta)
+
+        # Proportional to prioritize the angle correction
+        v_prop: float = abs(smallest_angle_diff(math.pi - ANGLE_EPSILON, d_theta)) * (max_velocity / (math.pi - ANGLE_EPSILON))
+
+        return RobotMove(from_polar(v_prop, theta), k_p * d_theta)
+    else:
+        d_theta: float = smallest_angle_diff(agent_angle, entry.target_angle)
+        return RobotMove(entry.target_velocity, k_p * d_theta)

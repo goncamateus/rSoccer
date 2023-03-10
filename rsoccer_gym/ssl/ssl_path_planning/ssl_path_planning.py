@@ -120,6 +120,7 @@ class SSLPathPlanningEnv(SSLBaseEnv):
         entry: GoToPointEntry = GoToPointEntry()
         entry.target = Point2D(target_x * 1000.0, target_y * 1000.0)  # m to mm
         entry.target_angle = target_angle
+        entry.target_velocity = self.target_velocity
         entry.using_prop_velocity = True
 
         robot = self.frame.robots_blue[0]

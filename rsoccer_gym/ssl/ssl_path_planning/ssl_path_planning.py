@@ -297,3 +297,14 @@ class SSLPathPlanningEnv(SSLBaseEnv):
         self.view.set_target_angle(np.rad2deg(self.target_angle))
 
         return pos_frame
+
+
+if __name__ == "__main__":
+    env = SSLPathPlanningEnv()
+    env.reset()
+    env.render()
+    done = False
+    while not done:
+        action = np.array([0.0, 0.0, 0.0, 0.0])
+        obs, reward, done, info = env.step(action)
+        env.render()

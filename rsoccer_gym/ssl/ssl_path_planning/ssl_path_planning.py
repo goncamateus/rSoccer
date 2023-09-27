@@ -1,14 +1,7 @@
 import random
 from rsoccer_gym.Render.Render import RCGymRender
 
-from rsoccer_gym.ssl.ssl_path_planning.navigation import (
-    Point2D,
-    GoToPointEntry,
-    go_to_point,
-    abs_smallest_angle_diff,
-    dist_to,
-    length,
-)
+from rsoccer_gym.ssl.ssl_path_planning.navigation import *
 
 import gym
 import numpy as np
@@ -101,32 +94,38 @@ class SSLPathPlanningEnv(SSLBaseEnv):
         return np.array(observation, dtype=np.float32)
 
     def _get_commands(self, action):
-        field_half_length = self.field.length / 2  # x
-        field_half_width = self.field.width / 2  # y
+        field_half_length = self.field.length / 2   # x
+        field_half_width = self.field.width / 2     # y
 
         target_x = action[0] * field_half_length
         target_y = action[1] * field_half_width
         target_angle = np.arctan2(action[2], action[3])
 
         entry: GoToPointEntry = GoToPointEntry()
-        entry.target = Point2D(target_x * 1000.0, target_y * 1000.0)  # m to mm
+        entry.target = Point2D(target_x, target_y)
         entry.target_angle = target_angle
         entry.target_velocity = self.target_velocity
         entry.using_prop_velocity = True
 
         robot = self.frame.robots_blue[0]
         angle = np.deg2rad(robot.theta)
-        position = Point2D(x=robot.x * 1000.0, y=robot.y * 1000.0)
+        position = Point2D(x=robot.x, y=robot.y)
+        vel = Point2D(x=robot.v_x, y=robot.v_y)
 
-        result = go_to_point(agent_position=position, agent_angle=angle, entry=entry)
+        #result = go_to_point(agent_position=position, agent_angle=angle, entry=entry)
 
+        result_new = go_to_point_new(agent_position=position,
+                                 agent_vel=vel,
+                                 agent_angle=angle, 
+                                 entry=entry)
+    
         return [
             Robot(
                 yellow=False,
                 id=0,
-                v_x=result.velocity.x,
-                v_y=result.velocity.y,
-                v_theta=result.angular_velocity,
+                v_x=result_new.velocity.x,
+                v_y=result_new.velocity.y,
+                v_theta=result_new.angular_velocity,
             )
         ]
 

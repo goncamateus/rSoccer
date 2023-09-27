@@ -4,11 +4,12 @@ from dataclasses import dataclass
 from collections import namedtuple
 from typing import Final, Optional
 import math
+import numpy as np
 
 PROP_VELOCITY_MIN_FACTOR: Final[float] = 0.1
 MAX_VELOCITY: Final[float] = 2.2
 ANGLE_EPSILON: Final[float] = 0.1
-ANGLE_KP: Final[float] = 5
+ANGLE_KP: Final[float] = 2
 ROTATE_IN_POINT_MIN_VEL_FACTOR: Final[float] = 0.18
 ROTATE_IN_POINT_APPROACH_KP: Final[float] = 2
 ROTATE_IN_POINT_MAX_VELOCITY: Final[float] = 1.8
@@ -18,6 +19,12 @@ MIN_DIST_TO_PROP_VELOCITY: Final[float] = 720
 ADJUST_ANGLE_MIN_DIST: Final[float] = 50
 
 M_TO_MM: Final[float] = 1000.0
+
+# added variables (needs adjusting):
+MAX_ACCEL: Final[float] = 1   
+MAX_DV: Final[float] = 0.100   
+EPS: Final[float] = 10e-4
+MIN_ANGLE_TO_ROTATE: Final[float] = np.deg2rad(2.5)
 
 
 Point2D = namedtuple("Point2D", ["x", "y"])
@@ -94,6 +101,11 @@ def angle_between(p_1: Point2D, p_2: Point2D) -> float:
     """Returns the angle between two points"""
     return math.atan2(cross(p_1, p_2), dot(p_1, p_2))
 
+def rotate_to_local(p_global: Point2D, robot_angle: float) -> Point2D:
+    """Returns the point p_global expressed in robot's local frame"""
+    local_x = np.cos(robot_angle)*p_global.x + np.sin(robot_angle)*p_global.y
+    local_y = -np.sin(robot_angle)*p_global.x + np.cos(robot_angle)*p_global.y
+    return Point2D(local_x, local_y)
 
 @dataclass()
 class GoToPointEntry:
@@ -107,7 +119,6 @@ class GoToPointEntry:
     prop_velocity_factor: Optional[float] = None
     prop_min_distance: Optional[float] = None
     using_prop_velocity: bool = False
-
 
 def go_to_point(agent_position: Point2D, agent_angle: float, entry: GoToPointEntry) -> RobotMove:
     """Returns the robot move"""
@@ -148,3 +159,80 @@ def go_to_point(agent_position: Point2D, agent_angle: float, entry: GoToPointEnt
     else:
         d_theta: float = smallest_angle_diff(agent_angle, entry.target_angle)
         return RobotMove(entry.target_velocity, k_p * d_theta)
+
+@dataclass()
+class GoToPointEntryNew:
+    """Go to point entry"""
+    target: Point2D = Point2D(0.0, 0.0)
+    target_angle: float = 0.0
+    target_velocity: Point2D = Point2D(0.0, 0.0)
+
+    max_velocity: Optional[float] = None
+    max_accel: Optional[float] = None
+
+def go_to_point_new(agent_position: Point2D, agent_vel: Point2D, agent_angle: float, entry: GoToPointEntryNew) -> RobotMove:
+    """Returns the robot move"""
+    # If Player send max speed, this max speed has to be respected
+    # Ohterwise, use the max speed received in the parameter
+    max_velocity: float = entry.max_velocity if entry.max_velocity else MAX_VELOCITY
+
+    # CALCULATING ONLY VX
+    vx_desired = 0
+    vx_current = agent_vel.x
+    x_desired = entry.target.x
+    x_current = agent_position.x
+    x_dist_to_target = abs(x_desired - x_current)
+
+    # Checks whether the robot must deaccelerate to reach the next desired state
+    should_deaccel_vx = (vx_current*(vx_desired-vx_current)<0)
+
+    min_dist_to_deaccel = (vx_current**2 - (np.sign(vx_current*vx_desired))*vx_desired**2)/(2*MAX_ACCEL)
+    if should_deaccel_vx and x_dist_to_target<min_dist_to_deaccel:
+        vx = (vx_current + (np.sign(vx_desired-vx_current))*MAX_DV)
+    
+    # Else, robot must accelerate
+    else:
+        vx = (vx_current + (np.sign(x_desired-x_current))*MAX_DV)
+    
+    # Checks if the robot is already on maximum velocity
+    if abs(vx)>max_velocity:
+        vx = np.sign(vx)*max_velocity
+
+    # CALCULATING ONLY VY
+    vy_desired = 0
+    vy_current = agent_vel.y
+    y_desired = entry.target.y
+    y_current = agent_position.y
+    y_dist_to_target = abs(y_desired - y_current)
+
+    # Checks whether the robot must deaccelerate to reach the next desired state
+    should_deaccel_vy = (vy_current*(vy_desired-vy_current)<0)
+
+    min_dist_to_deaccel = (vy_current**2 - (np.sign(vy_current*vy_desired))*vy_desired**2)/(2*MAX_ACCEL)
+    if should_deaccel_vy and y_dist_to_target<min_dist_to_deaccel:
+        vy = (vy_current + (np.sign(vy_desired-vy_current))*MAX_DV)
+    
+    # Else, robot must accelerate
+    else:
+        vy = (vy_current + (np.sign(y_desired-y_current))*MAX_DV)
+    
+    # Checks if the robot is already on maximum velocity
+    if abs(vy)>max_velocity:
+        vy = np.sign(vy)*max_velocity
+
+    v_desired = Point2D(vx, vy)
+
+    v_desired_local = rotate_to_local(v_desired, agent_angle)
+
+    # CALCULATING ONLY VW
+    k_p: float = entry.k_p if entry.k_p else ANGLE_KP
+    angle_to_rotate = smallest_angle_diff(agent_angle, entry.target_angle)
+    if abs(angle_to_rotate)<MIN_ANGLE_TO_ROTATE:
+        vw = 0
+    else:
+        vw = k_p*angle_to_rotate
+    
+    target = Point2D(x_desired, y_desired)
+    distance_to_target: float = dist_to(agent_position, target)
+
+    return RobotMove(v_desired_local, vw)

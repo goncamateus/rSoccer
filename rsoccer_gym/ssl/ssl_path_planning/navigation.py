@@ -269,7 +269,4 @@ def go_to_point_new(agent_position: Point2D, agent_vel: Point2D, agent_angle: fl
     target = Point2D(x_desired, y_desired)
     distance_to_target: float = dist_to(agent_position, target)
 
-    if distance_to_target<0.1:
-        print(f"vx_desired: {entry.target_velocity.x:.3f}, vx_current: {agent_vel.x:.3f}")
-
     return RobotMove(v_desired_local, vw)

@@ -8,6 +8,6 @@ env.reset()
 env.render()
 done = False
 while not done:
-    action = np.array([0.5, 0.5, 0.0, 0.0])
+    action = np.array([0.0, 0.0, 0.0, 0.0])
     obs, reward, done, info = env.step(action)
     env.render()

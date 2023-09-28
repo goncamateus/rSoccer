@@ -101,11 +101,10 @@ class SSLPathPlanningEnv(SSLBaseEnv):
         target_y = action[1] * field_half_width
         target_angle = np.arctan2(action[2], action[3])
 
-        entry: GoToPointEntry = GoToPointEntry()
+        entry: GoToPointEntryNew = GoToPointEntryNew()
         entry.target = Point2D(target_x, target_y)
         entry.target_angle = target_angle
         entry.target_velocity = self.target_velocity
-        entry.using_prop_velocity = True
         self.view.set_action_target(target_x, target_y)
         self.view.set_action_angle(target_angle)
 
@@ -224,8 +223,8 @@ class SSLPathPlanningEnv(SSLBaseEnv):
         random_velocity_direction: float = np.deg2rad(get_random_theta())
 
         self.target_velocity = Point2D(
-            x=random_speed * np.cos(random_velocity_direction),
-            y=random_speed * np.sin(random_velocity_direction),
+            x=2,
+            y=0,
         )
 
         #  TODO: Move RCGymRender to another place

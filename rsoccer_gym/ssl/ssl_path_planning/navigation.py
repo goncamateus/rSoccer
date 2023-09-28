@@ -21,8 +21,8 @@ ADJUST_ANGLE_MIN_DIST: Final[float] = 50
 M_TO_MM: Final[float] = 1000.0
 
 # added variables (needs adjusting):
-MAX_ACCEL: Final[float] = 1   
-MAX_DV: Final[float] = 0.100   
+MAX_ACCEL: Final[float] = 0.5
+MAX_DV: Final[float] = 0.1 
 EPS: Final[float] = 10e-4
 MIN_ANGLE_TO_ROTATE: Final[float] = np.deg2rad(2.5)
 
@@ -168,6 +168,7 @@ class GoToPointEntryNew:
     target_velocity: Point2D = Point2D(0.0, 0.0)
 
     max_velocity: Optional[float] = None
+    k_p: Optional[float] = None
     max_accel: Optional[float] = None
 
 def go_to_point_new(agent_position: Point2D, agent_vel: Point2D, agent_angle: float, entry: GoToPointEntryNew) -> RobotMove:
@@ -175,47 +176,80 @@ def go_to_point_new(agent_position: Point2D, agent_vel: Point2D, agent_angle: fl
     # If Player send max speed, this max speed has to be respected
     # Ohterwise, use the max speed received in the parameter
     max_velocity: float = entry.max_velocity if entry.max_velocity else MAX_VELOCITY
+    robot_to_target = Point2D(entry.target.x - agent_position.x, entry.target.y - agent_position.y)
 
-    # CALCULATING ONLY VX
-    vx_desired = 0
+    # CALCULATING VX
+    vx_desired = entry.target_velocity.x
     vx_current = agent_vel.x
     x_desired = entry.target.x
-    x_current = agent_position.x
-    x_dist_to_target = abs(x_desired - x_current)
+    robot_to_target_x = robot_to_target.x
 
     # Checks whether the robot must deaccelerate to reach the next desired state
-    should_deaccel_vx = (vx_current*(vx_desired-vx_current)<0)
+    robot_has_passed_the_target = (robot_to_target.x*vx_desired<0)
 
-    min_dist_to_deaccel = (vx_current**2 - (np.sign(vx_current*vx_desired))*vx_desired**2)/(2*MAX_ACCEL)
-    if should_deaccel_vx and x_dist_to_target<min_dist_to_deaccel:
-        vx = (vx_current + (np.sign(vx_desired-vx_current))*MAX_DV)
-    
-    # Else, robot must accelerate
+    # Checks if the robot is moving away from target
+    robot_is_moving_away_from_target = (robot_to_target.x*vx_current<0)
+
+    # Robot should adopt 0-point as target
+    robot_should_go_to_0_point = robot_has_passed_the_target or robot_is_moving_away_from_target
+
+    # Change target to 0-point if needed
+    if robot_should_go_to_0_point:
+        zero_point_x = x_desired-np.sign(vx_desired)*vx_desired**2/(2*MAX_ACCEL)
+        robot_to_target_x = zero_point_x-agent_position.x
+        vx_desired = 0
+
+    # Checks distance to start changing to target velocity 
+    x_dist_to_target = abs(robot_to_target_x)
+    min_dist_to_deaccel = abs(vx_current**2 - vx_desired**2)/(2*MAX_ACCEL)
+    robot_in_start_deaccel_dist = (x_dist_to_target<min_dist_to_deaccel)         
+        
+    # Checks if distance to start changing to target velocity was reached
+    if robot_in_start_deaccel_dist:
+        vx = vx_current + np.sign(vx_desired-vx_current)*MAX_DV
+
+    # Else, move towards target
     else:
-        vx = (vx_current + (np.sign(x_desired-x_current))*MAX_DV)
-    
+        vx = vx_current + np.sign(robot_to_target_x)*MAX_DV
+
     # Checks if the robot is already on maximum velocity
     if abs(vx)>max_velocity:
         vx = np.sign(vx)*max_velocity
 
-    # CALCULATING ONLY VY
-    vy_desired = 0
+    # CALCULATING VY
+    vy_desired = entry.target_velocity.y
     vy_current = agent_vel.y
     y_desired = entry.target.y
-    y_current = agent_position.y
-    y_dist_to_target = abs(y_desired - y_current)
+    robot_to_target_y = robot_to_target.y
 
     # Checks whether the robot must deaccelerate to reach the next desired state
-    should_deaccel_vy = (vy_current*(vy_desired-vy_current)<0)
+    robot_has_passed_the_target = (robot_to_target.y*vy_desired<0)
 
-    min_dist_to_deaccel = (vy_current**2 - (np.sign(vy_current*vy_desired))*vy_desired**2)/(2*MAX_ACCEL)
-    if should_deaccel_vy and y_dist_to_target<min_dist_to_deaccel:
-        vy = (vy_current + (np.sign(vy_desired-vy_current))*MAX_DV)
-    
-    # Else, robot must accelerate
+    # Checks if the robot is moving away from target
+    robot_is_moving_away_from_target = (robot_to_target.y*vy_current<0)
+
+    # Robot should adopt 0-point as target
+    robot_should_go_to_0_point = robot_has_passed_the_target or robot_is_moving_away_from_target
+
+    # Change target to 0-point if needed
+    if robot_should_go_to_0_point:
+        zero_point_y = y_desired-np.sign(vy_desired)*vy_desired**2/(2*MAX_ACCEL)
+        robot_to_target_y = zero_point_y-agent_position.y
+        vy_desired = 0
+
+    # Checks distance to start changing to target velocity 
+    y_dist_to_target = abs(robot_to_target_y)
+    min_dist_to_deaccel = abs(vy_current**2 - vy_desired**2)/(2*MAX_ACCEL)
+    robot_in_start_deaccel_dist = (y_dist_to_target<min_dist_to_deaccel)         
+        
+    # Checks if distance to start changing to target velocity was reached
+    if robot_in_start_deaccel_dist:
+        vy = vy_current + np.sign(vy_desired-vy_current)*MAX_DV
+
+    # Else, move towards target
     else:
-        vy = (vy_current + (np.sign(y_desired-y_current))*MAX_DV)
-    
+        vy = vy_current + np.sign(robot_to_target_y)*MAX_DV
+
     # Checks if the robot is already on maximum velocity
     if abs(vy)>max_velocity:
         vy = np.sign(vy)*max_velocity
@@ -224,7 +258,7 @@ def go_to_point_new(agent_position: Point2D, agent_vel: Point2D, agent_angle: fl
 
     v_desired_local = rotate_to_local(v_desired, agent_angle)
 
-    # CALCULATING ONLY VW
+    # CALCULATING VW
     k_p: float = entry.k_p if entry.k_p else ANGLE_KP
     angle_to_rotate = smallest_angle_diff(agent_angle, entry.target_angle)
     if abs(angle_to_rotate)<MIN_ANGLE_TO_ROTATE:
@@ -234,5 +268,8 @@ def go_to_point_new(agent_position: Point2D, agent_vel: Point2D, agent_angle: fl
     
     target = Point2D(x_desired, y_desired)
     distance_to_target: float = dist_to(agent_position, target)
+
+    if distance_to_target<0.1:
+        print(f"vx_desired: {entry.target_velocity.x:.3f}, vx_current: {agent_vel.x:.3f}")
 
     return RobotMove(v_desired_local, vw)

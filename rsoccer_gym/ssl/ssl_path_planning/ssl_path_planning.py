@@ -113,8 +113,6 @@ class SSLPathPlanningEnv(SSLBaseEnv):
         position = Point2D(x=robot.x, y=robot.y)
         vel = Point2D(x=robot.v_x, y=robot.v_y)
 
-        # result = go_to_point(agent_position=position, agent_angle=angle, entry=entry)
-
         result_new = go_to_point_new(
             agent_position=position, agent_vel=vel, agent_angle=angle, entry=entry
         )
@@ -223,9 +221,14 @@ class SSLPathPlanningEnv(SSLBaseEnv):
         random_velocity_direction: float = np.deg2rad(get_random_theta())
 
         self.target_velocity = Point2D(
-            x=0,
-            y=0,
+            x=random_speed * np.cos(random_velocity_direction),
+            y=random_speed * np.sin(random_velocity_direction),
         )
+
+        #self.target_velocity = Point2D(
+        #    x=1,
+        #    y=2,
+        #)
 
         #  TODO: Move RCGymRender to another place
         self.view = RCGymRender(

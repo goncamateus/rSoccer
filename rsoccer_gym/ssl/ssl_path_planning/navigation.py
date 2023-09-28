@@ -21,7 +21,7 @@ ADJUST_ANGLE_MIN_DIST: Final[float] = 50
 M_TO_MM: Final[float] = 1000.0
 
 # added variables (needs adjusting):
-MAX_ACCEL: Final[float] = 0.5
+MAX_ACCEL: Final[float] = 1
 MAX_DV: Final[float] = 0.1 
 EPS: Final[float] = 10e-4
 MIN_ANGLE_TO_ROTATE: Final[float] = np.deg2rad(2.5)
@@ -171,11 +171,32 @@ class GoToPointEntryNew:
     k_p: Optional[float] = None
     max_accel: Optional[float] = None
 
+def rotate_vector(vector: Point2D, angle_radians: float) -> Point2D:
+    # Convert to numpy
+    vector = np.array([vector.x, vector.y])
+
+    # Compute rotation
+    rotation_matrix = np.array([[np.cos(angle_radians), -np.sin(angle_radians)],
+                                [np.sin(angle_radians), np.cos(angle_radians)]])
+    rotated_vector = np.dot(rotation_matrix, vector)
+
+    # Convert back to Point2D
+    rotated_vector = Point2D(rotated_vector[0], rotated_vector[1])
+
+    return rotated_vector
+
 def go_to_point_new(agent_position: Point2D, agent_vel: Point2D, agent_angle: float, entry: GoToPointEntryNew) -> RobotMove:
     """Returns the robot move"""
     # If Player send max speed, this max speed has to be respected
     # Ohterwise, use the max speed received in the parameter
     max_velocity: float = entry.max_velocity if entry.max_velocity else MAX_VELOCITY
+
+    # Rotate axis and express vectors in terms of the target velocity's direction
+    target_velocity_angle = np.arctan2(entry.target_velocity.y, entry.target_velocity.x)
+    entry.target_velocity = rotate_vector(entry.target_velocity, -target_velocity_angle)
+    agent_vel = rotate_vector(agent_vel, -target_velocity_angle)
+    entry.target = rotate_vector(entry.target, -target_velocity_angle)
+    agent_position = rotate_vector(agent_position, -target_velocity_angle)
     robot_to_target = Point2D(entry.target.x - agent_position.x, entry.target.y - agent_position.y)
 
     # CALCULATING VX
@@ -256,6 +277,10 @@ def go_to_point_new(agent_position: Point2D, agent_vel: Point2D, agent_angle: fl
 
     v_desired = Point2D(vx, vy)
 
+    # Rotate Vx e Vy back to global axis
+    v_desired = rotate_vector(v_desired, target_velocity_angle)
+
+    # Rotate to robot's local frame
     v_desired_local = rotate_to_local(v_desired, agent_angle)
 
     # CALCULATING VW
@@ -266,7 +291,4 @@ def go_to_point_new(agent_position: Point2D, agent_vel: Point2D, agent_angle: fl
     else:
         vw = k_p*angle_to_rotate
     
-    target = Point2D(x_desired, y_desired)
-    distance_to_target: float = dist_to(agent_position, target)
-
     return RobotMove(v_desired_local, vw)

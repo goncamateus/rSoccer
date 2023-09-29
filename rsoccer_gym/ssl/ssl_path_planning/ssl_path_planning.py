@@ -35,7 +35,7 @@ class SSLPathPlanningEnv(SSLBaseEnv):
             low=-1, high=1, shape=(4,), dtype=np.float32  # hyp tg.
         )
 
-        n_obs = 6 + 4 + 7 * self.n_robots_blue + 2 * self.n_robots_yellow
+        n_obs = 6 + 7 * self.n_robots_blue + 2 * self.n_robots_yellow
         self.observation_space = gym.spaces.Box(
             low=-self.NORM_BOUNDS,
             high=self.NORM_BOUNDS,
@@ -80,23 +80,13 @@ class SSLPathPlanningEnv(SSLBaseEnv):
         observation.append(self.norm_v(self.target_velocity.x))
         observation.append(self.norm_v(self.target_velocity.y))
 
-        observation.append(self.norm_pos(self.frame.ball.x))
-        observation.append(self.norm_pos(self.frame.ball.y))
-        observation.append(self.norm_v(self.frame.ball.v_x))
-        observation.append(self.norm_v(self.frame.ball.v_y))
-
-        for i in range(self.n_robots_blue):
-            observation.append(self.norm_pos(self.frame.robots_blue[i].x))
-            observation.append(self.norm_pos(self.frame.robots_blue[i].y))
-            observation.append(np.sin(np.deg2rad(self.frame.robots_blue[i].theta)))
-            observation.append(np.cos(np.deg2rad(self.frame.robots_blue[i].theta)))
-            observation.append(self.norm_v(self.frame.robots_blue[i].v_x))
-            observation.append(self.norm_v(self.frame.robots_blue[i].v_y))
-            observation.append(self.norm_w(self.frame.robots_blue[i].v_theta))
-
-        for i in range(self.n_robots_yellow):
-            observation.append(self.norm_pos(self.frame.robots_yellow[i].x))
-            observation.append(self.norm_pos(self.frame.robots_yellow[i].y))
+        observation.append(self.norm_pos(self.frame.robots_blue[0].x))
+        observation.append(self.norm_pos(self.frame.robots_blue[0].y))
+        observation.append(np.sin(np.deg2rad(self.frame.robots_blue[0].theta)))
+        observation.append(np.cos(np.deg2rad(self.frame.robots_blue[0].theta)))
+        observation.append(self.norm_v(self.frame.robots_blue[0].v_x))
+        observation.append(self.norm_v(self.frame.robots_blue[0].v_y))
+        observation.append(self.norm_w(self.frame.robots_blue[0].v_theta))
 
         return np.array(observation, dtype=np.float32)
 

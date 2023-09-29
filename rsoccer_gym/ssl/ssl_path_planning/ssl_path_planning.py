@@ -175,7 +175,7 @@ class SSLPathPlanningEnv(SSLBaseEnv):
     def _angle_reward(self):
         action = self.actual_action.target_angle
         target = self.target_angle
-        return smallest_angle_diff(action, target)
+        return abs_smallest_angle_diff(action, target)
 
     def _calculate_reward_and_done(self):
         done = False

@@ -29,5 +29,5 @@ register(id='SSLPassEndurance-v0',
 register(id='SSLPathPlanning-v0',
          entry_point='rsoccer_gym.ssl.ssl_path_planning:SSLPathPlanningEnv',
          kwargs={'field_type': 2, 'n_robots_yellow': 0},
-         max_episode_steps=1200
+         max_episode_steps=75
          )

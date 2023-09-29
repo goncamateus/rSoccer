@@ -193,12 +193,12 @@ class SSLPathPlanningEnv(SSLBaseEnv):
                 ]
             )
         )
-        print(f"dist: {robot_dist:.3f} | angle: {angle_reward < ANGLE_TOLERANCE} | vel: {robot_vel_error < self.SPEED_TOLERANCE}")
+        print(f"dist_reward: {dist_reward < DIST_TOLERANCE} | robot_dist: {robot_dist < DIST_TOLERANCE} | angle: {angle_reward < ANGLE_TOLERANCE} | vel: {robot_vel_error < self.SPEED_TOLERANCE}")
         if (
             dist_reward < DIST_TOLERANCE
             and angle_reward < ANGLE_TOLERANCE
             and robot_vel_error < self.SPEED_TOLERANCE
-            and dist_reward < DIST_TOLERANCE < DIST_TOLERANCE
+            and robot_dist < DIST_TOLERANCE
         ):
             done = True
             reward = 100

@@ -139,16 +139,17 @@ class SSLPathPlanningEnv(SSLBaseEnv):
         return abs(current - target) <= SPEED_TOLERANCE
 
     def step(self, action):
-        self.steps += 1
-        # Join agent action with environment actions
-        commands: List[Robot] = self._get_commands(action)
-        # Send command to simulator
-        self.rsim.send_commands(commands)
-        self.sent_commands = commands
+        for _ in range(16):
+            self.steps += 1
+            # Join agent action with environment actions
+            commands: List[Robot] = self._get_commands(action)
+            # Send command to simulator
+            self.rsim.send_commands(commands)
+            self.sent_commands = commands
 
-        # Get Frame from simulator
-        self.last_frame = self.frame
-        self.frame = self.rsim.get_frame()
+            # Get Frame from simulator
+            self.last_frame = self.frame
+            self.frame = self.rsim.get_frame()
 
         # Calculate environment observation, reward and done condition
         observation = self._frame_to_observations()

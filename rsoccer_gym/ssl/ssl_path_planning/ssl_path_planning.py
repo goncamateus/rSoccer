@@ -150,7 +150,7 @@ class SSLPathPlanningEnv(SSLBaseEnv):
         target_y = action[1] * field_half_width
         target_angle = np.arctan2(action[2], action[3])
 
-        entry: GoToPointEntry = GoToPointEntry()
+        entry: GoToPointEntryNew = GoToPointEntryNew()
         entry.target = Point2D(target_x, target_y)
         entry.target_angle = target_angle
         self.last_target = entry
@@ -275,7 +275,7 @@ class SSLPathPlanningEnv(SSLBaseEnv):
         self.view.set_target(self.target_point.x, self.target_point.y)
         self.view.set_target_angle(np.rad2deg(self.target_angle))
         robot = pos_frame.robots_blue[0]
-        entry: GoToPointEntry = GoToPointEntry()
+        entry: GoToPointEntryNew = GoToPointEntryNew()
         entry.target = Point2D(robot.x, robot.y)
         entry.target_angle = np.deg2rad(robot.theta)
         self.last_target = entry

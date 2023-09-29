@@ -49,9 +49,6 @@ class SSLPathPlanningEnv(SSLBaseEnv):
 
         self.target_point: Point2D = Point2D(0, 0)
         self.target_angle: float = 0.0
-        self.mid_targets: np.ndarray = np.array(
-            [(self.target_point, self.target_angle)]
-        )
         self.target_velocity: Point2D = Point2D(0, 0)
 
         self.action_frequency = action_frequency
@@ -230,7 +227,6 @@ class SSLPathPlanningEnv(SSLBaseEnv):
             robot_angle=robot_angle,
             target_pos=target_pos,
             target_angle=target_angle,
-            target_vel=target_vel,
         )
         return reward, done
 
@@ -300,12 +296,6 @@ class SSLPathPlanningEnv(SSLBaseEnv):
             pos_frame.robots_yellow[i] = Robot(
                 id=i, yellow=True, x=pos[0], y=pos[1], theta=get_random_theta()
             )
-
-        self.mid_targets = np.linspace(
-            np.array([pos_frame.robots_blue[0].x, pos_frame.robots_blue[0].y]),
-            np.array([self.target_point.x, self.target_point.y]),
-            num=5,
-        )
 
         self.view.set_target(self.target_point.x, self.target_point.y)
         self.view.set_target_angle(np.rad2deg(self.target_angle))

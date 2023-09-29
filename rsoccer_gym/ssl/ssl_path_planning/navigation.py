@@ -40,6 +40,9 @@ def length(point: Point2D) -> float:
     """Returns the length of a vector"""
     return (point.x ** 2 + point.y ** 2) ** 0.5
 
+def normalize(point: Point2D) -> float:
+    """Returns the normalized vector"""
+    return Point2D(point.x / length(point), point.y / length(point))
 
 def pt_angle(point: Point2D) -> float:
     """Returns the angle of a vector"""

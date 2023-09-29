@@ -10,10 +10,9 @@ from rsoccer_gym.ssl.ssl_gym_base import SSLBaseEnv
 from rsoccer_gym.ssl.ssl_path_planning.navigation import *
 from rsoccer_gym.Utils import KDTree
 
-ANGLE_TOLERANCE: float = np.deg2rad(7.5)  # 7.5 degrees
-SPEED_TOLERANCE: float = 0.20  # m/s == 20 cm/s
+ANGLE_TOLERANCE: float = np.deg2rad(5)  # 5 degrees
+SPEED_TOLERANCE: float = 0.30  # m/s == 30 cm/s
 DIST_TOLERANCE: float = 0.10  # m == 10 cm
-
 
 class SSLPathPlanningEnv(SSLBaseEnv):
     """The SSL robot needs to reach the target point with a given angle"""
@@ -184,11 +183,19 @@ class SSLPathPlanningEnv(SSLBaseEnv):
                 ]
             )
         )
-        robot_stopped = np.linalg.norm(robot_vel) < SPEED_TOLERANCE
+        #robot_stopped = np.linalg.norm(robot_vel) < SPEED_TOLERANCE
+        robot_vel_error = np.linalg.norm(
+            np.array(
+                [
+                    self.frame.robots_blue[0].v_x - self.target_velocity.x,
+                    self.frame.robots_blue[0].v_y - self.target_velocity.y,
+                ]
+            )
+        )
         if (
             dist_reward < DIST_TOLERANCE
             and angle_reward < ANGLE_TOLERANCE
-            and robot_stopped
+            and robot_vel_error < SPEED_TOLERANCE
             and robot_dist < DIST_TOLERANCE
         ):
             done = True

@@ -92,28 +92,12 @@ class SSLPathPlanningEnv(SSLBaseEnv):
 
     def _get_commands(self, action):
         robot = self.frame.robots_blue[0]
-        field_half_length = self.field.length / 2  # x
-        field_half_width = self.field.width / 2  # y
-
-        target_x = action[0] * field_half_length
-        target_y = action[1] * field_half_width
-        target_angle = np.arctan2(action[2], action[3])
-
-        entry: GoToPointEntryNew = GoToPointEntryNew()
-        entry.target = Point2D(target_x, target_y)
-        entry.target_angle = target_angle
-        entry.target_velocity = self.target_velocity
-        self.view.set_action_target(target_x, target_y)
-        self.view.set_action_angle(np.rad2deg(target_angle))
-        self.actual_action = entry
-
-        robot = self.frame.robots_blue[0]
         angle = np.deg2rad(robot.theta)
         position = Point2D(x=robot.x, y=robot.y)
         vel = Point2D(x=robot.v_x, y=robot.v_y)
 
         result = go_to_point_new(
-            agent_position=position, agent_vel=vel, agent_angle=angle, entry=entry
+            agent_position=position, agent_vel=vel, agent_angle=angle, entry=action
         )
         return [
             Robot(
@@ -129,10 +113,25 @@ class SSLPathPlanningEnv(SSLBaseEnv):
         return abs(current - target) <= self.SPEED_TOLERANCE
 
     def step(self, action):
+        robot = self.frame.robots_blue[0]
+        field_half_length = self.field.length / 2  # x
+        field_half_width = self.field.width / 2  # y
+
+        target_x = action[0] / 4 + robot.x
+        target_x = np.clip(target_x, -field_half_length, field_half_length)
+        target_y = action[1] / 4 + robot.y
+        target_y = np.clip(target_y, -field_half_width, field_half_width)
+        target_angle = np.arctan2(action[2], action[3])
+
+        entry: GoToPointEntryNew = GoToPointEntryNew()
+        entry.target = Point2D(target_x, target_y)
+        entry.target_angle = target_angle
+        entry.target_velocity = self.target_velocity
+        self.actual_action = entry
         for _ in range(self.action_frequency):
             self.steps += 1
             # Join agent action with environment actions
-            commands: List[Robot] = self._get_commands(action)
+            commands: List[Robot] = self._get_commands(entry)
             # Send command to simulator
             self.rsim.send_commands(commands)
             self.sent_commands = commands
@@ -141,18 +140,13 @@ class SSLPathPlanningEnv(SSLBaseEnv):
             self.last_frame = self.frame
             self.frame = self.rsim.get_frame()
 
+        self.view.set_action_target(target_x, target_y)
+        self.view.set_action_angle(np.rad2deg(target_angle))
+        self.view.set_target(self.target_point.x, self.target_point.y)
+        self.view.set_target_angle(np.rad2deg(self.target_angle))
         # Calculate environment observation, reward and done condition
         observation = self._frame_to_observations()
         reward, done = self._calculate_reward_and_done()
-        field_half_length = self.field.length / 2  # x
-        field_half_width = self.field.width / 2  # y
-        target_x = action[0] * field_half_length
-        target_y = action[1] * field_half_width
-        target_angle = np.arctan2(action[2], action[3])
-
-        entry: GoToPointEntryNew = GoToPointEntryNew()
-        entry.target = Point2D(target_x, target_y)
-        entry.target_angle = target_angle
         self.last_target = entry
 
         return observation, reward, done, {}
@@ -160,7 +154,8 @@ class SSLPathPlanningEnv(SSLBaseEnv):
     def _dist_reward(self):
         action = self.actual_action.target
         target = self.target_point
-        return dist_to(action, target)
+        actual_dist = dist_to(action, target)
+        return -actual_dist, actual_dist
 
     def _angle_reward(self):
         action = self.actual_action.target_angle
@@ -171,7 +166,7 @@ class SSLPathPlanningEnv(SSLBaseEnv):
         done = False
         reward = 0
         max_angle = np.pi
-        dist_reward = self._dist_reward()
+        dist_reward, distance = self._dist_reward()
         angle_reward = self._angle_reward()
         robot_vel = np.array(
             [self.frame.robots_blue[0].v_x, self.frame.robots_blue[0].v_y]
@@ -184,7 +179,6 @@ class SSLPathPlanningEnv(SSLBaseEnv):
                 ]
             )
         )
-        #robot_stopped = np.linalg.norm(robot_vel) < self.SPEED_TOLERANCE
         robot_vel_error = np.linalg.norm(
             np.array(
                 [
@@ -195,7 +189,7 @@ class SSLPathPlanningEnv(SSLBaseEnv):
         )
         #print(f"dist_reward: {dist_reward < DIST_TOLERANCE} | robot_dist: {robot_dist < DIST_TOLERANCE} | angle: {angle_reward < ANGLE_TOLERANCE} | vel: {robot_vel_error < self.SPEED_TOLERANCE}")
         if (
-            dist_reward < DIST_TOLERANCE
+            distance < DIST_TOLERANCE
             and angle_reward < ANGLE_TOLERANCE
             and robot_vel_error < self.SPEED_TOLERANCE
             and robot_dist < DIST_TOLERANCE
@@ -203,7 +197,7 @@ class SSLPathPlanningEnv(SSLBaseEnv):
             done = True
             reward = 100
         else:
-            reward = -1 * (dist_reward + angle_reward / max_angle)
+            reward = dist_reward - (angle_reward / max_angle)
         return reward, done
 
     def _get_initial_positions_frame(self):

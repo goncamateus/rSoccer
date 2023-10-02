@@ -22,7 +22,7 @@ M_TO_MM: Final[float] = 1000.0
 
 # added variables (needs adjusting):
 MAX_ACCEL: Final[float] = 1
-MAX_DV: Final[float] = 0.1 
+MAX_DV: Final[float] = 0.1
 EPS: Final[float] = 10e-4
 MIN_ANGLE_TO_ROTATE: Final[float] = np.deg2rad(2.5)
 
@@ -38,18 +38,22 @@ def dist_to(p_1: Point2D, p_2: Point2D) -> float:
 
 def length(point: Point2D) -> float:
     """Returns the length of a vector"""
-    return (point.x ** 2 + point.y ** 2) ** 0.5
+    return (point.x**2 + point.y**2) ** 0.5
+
 
 def normalize(point: Point2D) -> float:
     """Returns the normalized vector"""
     return Point2D(point.x / length(point), point.y / length(point))
+
 
 def pt_angle(point: Point2D) -> float:
     """Returns the angle of a vector"""
     return math.atan2(point.y, point.x)
 
 
-def math_map(value: float, in_min: float, in_max: float, out_min: float, out_max: float) -> float:
+def math_map(
+    value: float, in_min: float, in_max: float, out_min: float, out_max: float
+) -> float:
     """Maps a value from one range to another"""
     return (value - in_min) * (out_max - out_min) / (in_max - in_min) + out_min
 
@@ -104,68 +108,18 @@ def angle_between(p_1: Point2D, p_2: Point2D) -> float:
     """Returns the angle between two points"""
     return math.atan2(cross(p_1, p_2), dot(p_1, p_2))
 
+
 def rotate_to_local(p_global: Point2D, robot_angle: float) -> Point2D:
     """Returns the point p_global expressed in robot's local frame"""
-    local_x = np.cos(robot_angle)*p_global.x + np.sin(robot_angle)*p_global.y
-    local_y = -np.sin(robot_angle)*p_global.x + np.cos(robot_angle)*p_global.y
+    local_x = np.cos(robot_angle) * p_global.x + np.sin(robot_angle) * p_global.y
+    local_y = -np.sin(robot_angle) * p_global.x + np.cos(robot_angle) * p_global.y
     return Point2D(local_x, local_y)
 
-@dataclass()
-class GoToPointEntry:
-    """Go to point entry"""
-    target: Point2D = Point2D(0.0, 0.0)
-    target_angle: float = 0.0
-    target_velocity: Point2D = Point2D(0.0, 0.0)
-
-    max_velocity: Optional[float] = None
-    k_p: Optional[float] = None
-    prop_velocity_factor: Optional[float] = None
-    prop_min_distance: Optional[float] = None
-    using_prop_velocity: bool = False
-
-def go_to_point(agent_position: Point2D, agent_angle: float, entry: GoToPointEntry) -> RobotMove:
-    """Returns the robot move"""
-    # If Player send max speed, this max speed has to be respected
-    # Ohterwise, use the max speed received in the parameter
-
-    max_velocity: float = entry.max_velocity if entry.max_velocity else MAX_VELOCITY
-    distance_to_goal: float = dist_to(agent_position, entry.target)
-    k_p: float = entry.k_p if entry.k_p else ANGLE_KP
-
-    # If it is to use proportional speed and the distance to the target position is less the
-    # threshold
-    if entry.using_prop_velocity:
-        prop_velocity_factor: float = PROP_VELOCITY_MIN_FACTOR
-        min_prop_distance: float = entry.prop_min_distance if entry.prop_min_distance else MIN_DIST_TO_PROP_VELOCITY
-
-        # If Player send the min prop speed factor, it has to be respected
-        # Otherwise, use defined in the parameter
-        if entry.prop_velocity_factor and 0.0 <= entry.prop_velocity_factor <= 1.0:
-            prop_velocity_factor = entry.prop_velocity_factor
-
-        if distance_to_goal <= min_prop_distance:
-            max_velocity = max_velocity * math_map(distance_to_goal, 0.0, min_prop_distance, prop_velocity_factor, 1.0)
-            max_velocity = max(length(entry.target_velocity), max_velocity)
-
-
-    if distance_to_goal > ADJUST_ANGLE_MIN_DIST:
-        # Uses an angle PID (only proportional for now), and first try to get in the right angle,
-        # using only angular speed and then use linear speed to get into the point
-
-        theta: float = pt_angle(Point2D(entry.target.x - agent_position.x, entry.target.y - agent_position.y))
-        d_theta: float = smallest_angle_diff(agent_angle, entry.target_angle)
-
-        # Proportional to prioritize the angle correction
-        v_prop: float = abs(smallest_angle_diff(math.pi - ANGLE_EPSILON, d_theta)) * (max_velocity / (math.pi - ANGLE_EPSILON))
-
-        return RobotMove(from_polar(v_prop, theta), k_p * d_theta)
-    else:
-        d_theta: float = smallest_angle_diff(agent_angle, entry.target_angle)
-        return RobotMove(entry.target_velocity, k_p * d_theta)
 
 @dataclass()
 class GoToPointEntryNew:
     """Go to point entry"""
+
     target: Point2D = Point2D(0.0, 0.0)
     target_angle: float = 0.0
     target_velocity: Point2D = Point2D(0.0, 0.0)
@@ -174,13 +128,18 @@ class GoToPointEntryNew:
     k_p: Optional[float] = None
     max_accel: Optional[float] = None
 
+
 def rotate_vector(vector: Point2D, angle_radians: float) -> Point2D:
     # Convert to numpy
     vector = np.array([vector.x, vector.y])
 
     # Compute rotation
-    rotation_matrix = np.array([[np.cos(angle_radians), -np.sin(angle_radians)],
-                                [np.sin(angle_radians), np.cos(angle_radians)]])
+    rotation_matrix = np.array(
+        [
+            [np.cos(angle_radians), -np.sin(angle_radians)],
+            [np.sin(angle_radians), np.cos(angle_radians)],
+        ]
+    )
     rotated_vector = np.dot(rotation_matrix, vector)
 
     # Convert back to Point2D
@@ -188,14 +147,20 @@ def rotate_vector(vector: Point2D, angle_radians: float) -> Point2D:
 
     return rotated_vector
 
-def go_to_point_new(agent_position: Point2D, agent_vel: Point2D, agent_angle: float, entry: GoToPointEntryNew) -> RobotMove:
+
+def go_to_point_new(
+    agent_position: Point2D,
+    agent_vel: Point2D,
+    agent_angle: float,
+    entry: GoToPointEntryNew,
+) -> RobotMove:
     """Returns the robot move"""
     # If Player send max speed, this max speed has to be respected
     # Ohterwise, use the max speed received in the parameter
     max_velocity: float = entry.max_velocity if entry.max_velocity else MAX_VELOCITY
 
     # Rotate axis and express vectors in terms of the target velocity's direction
-    if np.linalg.norm(entry.target_velocity)<EPS:
+    if np.linalg.norm(entry.target_velocity)>EPS:
         robot_to_target = Point2D(entry.target.x - agent_position.x, entry.target.y - agent_position.y)
         target_velocity_angle = np.arctan2(robot_to_target.y, robot_to_target.x)
     else:
@@ -205,7 +170,9 @@ def go_to_point_new(agent_position: Point2D, agent_vel: Point2D, agent_angle: fl
     agent_vel = rotate_vector(agent_vel, -target_velocity_angle)
     entry.target = rotate_vector(entry.target, -target_velocity_angle)
     agent_position = rotate_vector(agent_position, -target_velocity_angle)
-    robot_to_target = Point2D(entry.target.x - agent_position.x, entry.target.y - agent_position.y)
+    robot_to_target = Point2D(
+        entry.target.x - agent_position.x, entry.target.y - agent_position.y
+    )
 
     # CALCULATING VX
     vx_desired = entry.target_velocity.x
@@ -214,36 +181,40 @@ def go_to_point_new(agent_position: Point2D, agent_vel: Point2D, agent_angle: fl
     robot_to_target_x = robot_to_target.x
 
     # Checks whether the robot must deaccelerate to reach the next desired state
-    robot_has_passed_the_target = (robot_to_target.x*vx_desired<0)
+    robot_has_passed_the_target = robot_to_target.x * vx_desired < 0
 
     # Checks if the robot is moving away from target
-    robot_is_moving_away_from_target = (robot_to_target.x*vx_current<0)
+    robot_is_moving_away_from_target = robot_to_target.x * vx_current < 0
 
     # Robot should adopt 0-point as target
-    robot_should_go_to_0_point = robot_has_passed_the_target or robot_is_moving_away_from_target
+    robot_should_go_to_0_point = (
+        robot_has_passed_the_target or robot_is_moving_away_from_target
+    )
 
     # Change target to 0-point if needed
     if robot_should_go_to_0_point:
-        zero_point_x = x_desired-np.sign(vx_desired)*vx_desired**2/(2*MAX_ACCEL)
-        robot_to_target_x = zero_point_x-agent_position.x
+        zero_point_x = x_desired - np.sign(vx_desired) * vx_desired**2 / (
+            2 * MAX_ACCEL
+        )
+        robot_to_target_x = zero_point_x - agent_position.x
         vx_desired = 0
 
-    # Checks distance to start changing to target velocity 
+    # Checks distance to start changing to target velocity
     x_dist_to_target = abs(robot_to_target_x)
-    min_dist_to_deaccel = abs(vx_current**2 - vx_desired**2)/(2*MAX_ACCEL)
-    robot_in_start_deaccel_dist = (x_dist_to_target<min_dist_to_deaccel)         
-        
+    min_dist_to_deaccel = abs(vx_current**2 - vx_desired**2) / (2 * MAX_ACCEL)
+    robot_in_start_deaccel_dist = x_dist_to_target < min_dist_to_deaccel
+
     # Checks if distance to start changing to target velocity was reached
     if robot_in_start_deaccel_dist:
-        vx = vx_current + np.sign(vx_desired-vx_current)*MAX_DV
+        vx = vx_current + np.sign(vx_desired - vx_current) * MAX_DV
 
     # Else, move towards target
     else:
-        vx = vx_current + np.sign(robot_to_target_x)*MAX_DV
+        vx = vx_current + np.sign(robot_to_target_x) * MAX_DV
 
     # Checks if the robot is already on maximum velocity
-    if abs(vx)>max_velocity:
-        vx = np.sign(vx)*max_velocity
+    if abs(vx) > max_velocity:
+        vx = np.sign(vx) * max_velocity
 
     # CALCULATING VY
     vy_desired = entry.target_velocity.y
@@ -252,36 +223,40 @@ def go_to_point_new(agent_position: Point2D, agent_vel: Point2D, agent_angle: fl
     robot_to_target_y = robot_to_target.y
 
     # Checks whether the robot must deaccelerate to reach the next desired state
-    robot_has_passed_the_target = (robot_to_target.y*vy_desired<0)
+    robot_has_passed_the_target = robot_to_target.y * vy_desired < 0
 
     # Checks if the robot is moving away from target
-    robot_is_moving_away_from_target = (robot_to_target.y*vy_current<0)
+    robot_is_moving_away_from_target = robot_to_target.y * vy_current < 0
 
     # Robot should adopt 0-point as target
-    robot_should_go_to_0_point = robot_has_passed_the_target or robot_is_moving_away_from_target
+    robot_should_go_to_0_point = (
+        robot_has_passed_the_target or robot_is_moving_away_from_target
+    )
 
     # Change target to 0-point if needed
     if robot_should_go_to_0_point:
-        zero_point_y = y_desired-np.sign(vy_desired)*vy_desired**2/(2*MAX_ACCEL)
-        robot_to_target_y = zero_point_y-agent_position.y
+        zero_point_y = y_desired - np.sign(vy_desired) * vy_desired**2 / (
+            2 * MAX_ACCEL
+        )
+        robot_to_target_y = zero_point_y - agent_position.y
         vy_desired = 0
 
-    # Checks distance to start changing to target velocity 
+    # Checks distance to start changing to target velocity
     y_dist_to_target = abs(robot_to_target_y)
-    min_dist_to_deaccel = abs(vy_current**2 - vy_desired**2)/(2*MAX_ACCEL)
-    robot_in_start_deaccel_dist = (y_dist_to_target<min_dist_to_deaccel)         
-        
+    min_dist_to_deaccel = abs(vy_current**2 - vy_desired**2) / (2 * MAX_ACCEL)
+    robot_in_start_deaccel_dist = y_dist_to_target < min_dist_to_deaccel
+
     # Checks if distance to start changing to target velocity was reached
     if robot_in_start_deaccel_dist:
-        vy = vy_current + np.sign(vy_desired-vy_current)*MAX_DV
+        vy = vy_current + np.sign(vy_desired - vy_current) * MAX_DV
 
     # Else, move towards target
     else:
-        vy = vy_current + np.sign(robot_to_target_y)*MAX_DV
+        vy = vy_current + np.sign(robot_to_target_y) * MAX_DV
 
     # Checks if the robot is already on maximum velocity
-    if abs(vy)>max_velocity:
-        vy = np.sign(vy)*max_velocity
+    if abs(vy) > max_velocity:
+        vy = np.sign(vy) * max_velocity
 
     v_desired = Point2D(vx, vy)
 
@@ -294,9 +269,9 @@ def go_to_point_new(agent_position: Point2D, agent_vel: Point2D, agent_angle: fl
     # CALCULATING VW
     k_p: float = entry.k_p if entry.k_p else ANGLE_KP
     angle_to_rotate = smallest_angle_diff(agent_angle, entry.target_angle)
-    if abs(angle_to_rotate)<MIN_ANGLE_TO_ROTATE:
+    if abs(angle_to_rotate) < MIN_ANGLE_TO_ROTATE:
         vw = 0
     else:
-        vw = k_p*angle_to_rotate
-    
+        vw = k_p * angle_to_rotate
+
     return RobotMove(v_desired_local, vw)

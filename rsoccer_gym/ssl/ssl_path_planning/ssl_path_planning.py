@@ -159,9 +159,6 @@ class SSLPathPlanningEnv(SSLBaseEnv):
         max_angle = np.pi
         dist_reward, distance = self._dist_reward()
         angle_reward = self._angle_reward()
-        robot_vel = np.array(
-            [self.frame.robots_blue[0].v_x, self.frame.robots_blue[0].v_y]
-        )
         robot_dist = np.linalg.norm(
             np.array(
                 [
@@ -178,7 +175,7 @@ class SSLPathPlanningEnv(SSLBaseEnv):
                 ]
             )
         )
-        #print(f"dist_reward: {dist_reward < DIST_TOLERANCE} | robot_dist: {robot_dist < DIST_TOLERANCE} | angle: {angle_reward < ANGLE_TOLERANCE} | vel: {robot_vel_error < self.SPEED_TOLERANCE}")
+        # print(f"dist_reward: {dist_reward < DIST_TOLERANCE} | robot_dist: {robot_dist < DIST_TOLERANCE} | angle: {angle_reward < ANGLE_TOLERANCE} | vel: {robot_vel_error < self.SPEED_TOLERANCE}")
         if (
             distance < DIST_TOLERANCE
             and angle_reward < ANGLE_TOLERANCE
@@ -204,17 +201,33 @@ class SSLPathPlanningEnv(SSLBaseEnv):
         def get_random_theta():
             return random.uniform(0, 360)
 
+        def get_random_speed():
+            return random.uniform(0, self.max_v)
+
         pos_frame: Frame = Frame()
 
         pos_frame.ball = Ball(x=get_random_x(), y=get_random_y())
 
         self.target_point = Point2D(x=get_random_x(), y=get_random_y())
         self.target_angle = np.deg2rad(get_random_theta())
-        self.target_velocity = Point2D(x=0, y=0)
+        random_speed: float = get_random_speed()
+        random_velocity_direction: float = np.deg2rad(get_random_theta())
+
+        self.target_velocity = Point2D(
+            x=random_speed * np.cos(random_velocity_direction),
+            y=random_speed * np.sin(random_velocity_direction),
+        )
 
         # Adjust speed tolerance according to target velocity
-        target_speed_norm = np.sqrt(self.target_velocity.x**2 + self.target_velocity.y**2)
-        self.SPEED_TOLERANCE = SPEED_MIN_TOLERANCE + (SPEED_MAX_TOLERANCE-SPEED_MIN_TOLERANCE)*target_speed_norm/self.max_v
+        target_speed_norm = np.sqrt(
+            self.target_velocity.x**2 + self.target_velocity.y**2
+        )
+        self.SPEED_TOLERANCE = (
+            SPEED_MIN_TOLERANCE
+            + (SPEED_MAX_TOLERANCE - SPEED_MIN_TOLERANCE)
+            * target_speed_norm
+            / self.max_v
+        )
 
         #  TODO: Move RCGymRender to another place
         self.view = RCGymRender(

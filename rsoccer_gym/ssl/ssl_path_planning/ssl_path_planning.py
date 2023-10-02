@@ -22,7 +22,7 @@ class SSLPathPlanningEnv(SSLBaseEnv):
         self,
         field_type=1,
         n_robots_yellow=0,
-        action_frequency=4,
+        action_frequency=16,
     ):
         super().__init__(
             field_type=field_type,

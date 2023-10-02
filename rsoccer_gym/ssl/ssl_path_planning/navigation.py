@@ -160,11 +160,11 @@ def go_to_point_new(
     max_velocity: float = entry.max_velocity if entry.max_velocity else MAX_VELOCITY
 
     # Rotate axis and express vectors in terms of the target velocity's direction
-    if np.linalg.norm(entry.target_velocity)>EPS:
-        robot_to_target = Point2D(entry.target.x - agent_position.x, entry.target.y - agent_position.y)
-        target_velocity_angle = np.arctan2(robot_to_target.y, robot_to_target.x)
-    else:
-        target_velocity_angle = np.arctan2(entry.target_velocity.y, entry.target_velocity.x)
+    # if np.linalg.norm(entry.target_velocity)<EPS:
+    #     robot_to_target = Point2D(entry.target.x - agent_position.x, entry.target.y - agent_position.y)
+    #     target_velocity_angle = np.arctan2(robot_to_target.y, robot_to_target.x)
+    # else:
+    target_velocity_angle = np.arctan2(entry.target_velocity.y, entry.target_velocity.x)
 
     entry.target_velocity = rotate_vector(entry.target_velocity, -target_velocity_angle)
     agent_vel = rotate_vector(agent_vel, -target_velocity_angle)

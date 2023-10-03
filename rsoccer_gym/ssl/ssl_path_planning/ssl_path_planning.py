@@ -308,7 +308,7 @@ class SSLPathPlanningEnv(SSLBaseEnv):
 
         self.target_point = Point2D(x=get_random_x(), y=get_random_y())
         self.target_angle = np.deg2rad(get_random_theta())
-        random_speed: float = get_random_speed()
+        random_speed: float = 0
         random_velocity_direction: float = np.deg2rad(get_random_theta())
 
         self.target_velocity = Point2D(

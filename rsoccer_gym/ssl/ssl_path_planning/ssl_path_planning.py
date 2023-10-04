@@ -10,10 +10,10 @@ from rsoccer_gym.ssl.ssl_gym_base import SSLBaseEnv
 from rsoccer_gym.ssl.ssl_path_planning.navigation import *
 from rsoccer_gym.Utils import KDTree
 
-ANGLE_TOLERANCE: float = np.deg2rad(5)  # 5 degrees
+ANGLE_TOLERANCE: float = np.deg2rad(2.5)  # 2.5 degrees
 SPEED_MIN_TOLERANCE: float = 0.05  # m/s == 5 cm/s
 SPEED_MAX_TOLERANCE: float = 0.3  # m/s == 30 cm/s
-DIST_TOLERANCE: float = 0.05  # m == 5 cm
+DIST_TOLERANCE: float = 0.025  # m == 2.5 cm
 
 color2num = dict(
     gray=30,
@@ -202,15 +202,13 @@ class SSLPathPlanningEnv(SSLBaseEnv):
         target = self.target_point
         actual_dist = dist_to(action, target)
         reward = -actual_dist if actual_dist > DIST_TOLERANCE else 10
-        dist_reward = reward - self.last_dist_reward
-        self.last_dist_reward = reward
-        return dist_reward, actual_dist
+        return reward, actual_dist
 
     def _angle_reward(self):
         action_angle = np.arctan2(self.actual_action[2], self.actual_action[3])
         target = self.target_angle
         angle_diff = abs_smallest_angle_diff(action_angle, target)
-        angle_reward = -angle_diff/ np.pi if angle_diff > ANGLE_TOLERANCE else 0.1
+        angle_reward = -angle_diff/ np.pi if angle_diff > ANGLE_TOLERANCE else 1
         return angle_reward, angle_diff
 
     def _speed_reward(self):

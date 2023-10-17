@@ -10,10 +10,10 @@ from rsoccer_gym.ssl.ssl_gym_base import SSLBaseEnv
 from rsoccer_gym.ssl.ssl_path_planning.navigation import *
 from rsoccer_gym.Utils import KDTree
 
-ANGLE_TOLERANCE: float = np.deg2rad(2.5)  # 2.5 degrees
+ANGLE_TOLERANCE: float = np.deg2rad(5)  # 5 degrees
 SPEED_MIN_TOLERANCE: float = 0.05  # m/s == 5 cm/s
 SPEED_MAX_TOLERANCE: float = 0.3  # m/s == 30 cm/s
-DIST_TOLERANCE: float = 0.025  # m == 2.5 cm
+DIST_TOLERANCE: float = 0.05  # m == 5 cm
 
 color2num = dict(
     gray=30,

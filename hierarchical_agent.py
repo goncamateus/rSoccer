@@ -1,27 +1,25 @@
 import gym
 import rsoccer_gym
 import numpy as np
-from rsoccer_gym.ssl.hierarchical_go_to import SSLHierarchicalGoToEnv
 
-env = SSLHierarchicalGoToEnv()
+env = gym.make("SSLHierarchical-v0")
 
 for i in range(10):
     env.reset()
-    env.render()
     done = {"worker": False, "manager": False}
+    steps = 0
     while not done["manager"]:
-        # action = np.array(
-        #     [
-        #         # 0,
-        #         env.target_point.x / (env.field.length / 2),
-        #         env.target_point.y / (env.field.width / 2),
-        #         np.sin(env.target_angle),
-        #         np.cos(env.target_angle),
-        #         # env.target_velocity.x / 2.5,
-        #         # env.target_velocity.y / 2.5,
-        #     ]
-        # )
-        action = env.action_space.sample()
+        if steps == 0 or done["worker"]:
+            action = env.action_space.sample()
+            steps = 0
+        else:
+            action["worker"] = env.action_space.sample()["worker"]
+        steps = (steps + 1) % env.worker_max_steps
         obs, reward, done, info = env.step(action)
-        print(info)
+        env.render()
+        print(reward)
+        if isinstance(done, bool):
+            done = {"worker": done, "manager": done}
+        if done["worker"]:
+            env.reset_worker()
         env.render()

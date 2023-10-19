@@ -138,6 +138,25 @@ class SSLHierarchicalGoToEnv(SSLBaseEnv):
         obs = np.concatenate([obs, self.manager_target_pos])
         return obs
 
+    def math_modularize(self, value: float, mod: float) -> float:
+        """Make a value modular between 0 and mod"""
+        if not -mod <= value <= mod:
+            value = np.fmod(value, mod)
+
+        if value < 0:
+            value += mod
+
+        return value
+
+    def smallest_angle_diff(self, angle_a: float, angle_b: float) -> float:
+        """Returns the smallest angle difference between two angles"""
+        angle: float = self.math_modularize(angle_b - angle_a, 2 * np.pi)
+        if angle >= np.pi:
+            angle -= 2 * np.pi
+        elif angle < -np.pi:
+            angle += 2 * np.pi
+        return angle
+
     def _worker_reward(self):
         robot_pos = np.array([self.frame.robots_blue[0].x, self.frame.robots_blue[0].y])
         robot_to_target = self.manager_target_pos - robot_pos
@@ -145,23 +164,19 @@ class SSLHierarchicalGoToEnv(SSLBaseEnv):
         robot_to_ball = ball_pos - robot_pos
         robot_to_ball_angle = np.arctan2(robot_to_ball[1], robot_to_ball[0])
         robot_to_target_dist = np.linalg.norm(robot_to_target)
-        robot_to_ball_angle_diff = np.abs(
-            self.frame.robots_blue[0].theta - robot_to_ball_angle
-        )
-        robot_to_ball_angle_diff = np.minimum(
-            robot_to_ball_angle_diff,
-            2 * np.pi - robot_to_ball_angle_diff,
+        robot_to_ball_angle_diff = abs(
+            self.smallest_angle_diff(
+                np.deg2rad(self.frame.robots_blue[0].theta), robot_to_ball_angle
+            )
         )
 
-        robot_to_target = robot_to_target / robot_to_target_dist
         robot_vel = np.array(
             [self.frame.robots_blue[0].v_x, self.frame.robots_blue[0].v_y]
         )
-        robot_vel = robot_vel / np.linalg.norm(robot_vel)
         vel_cos_diff = np.dot(robot_to_target, robot_vel)
 
         dist_reward = -robot_to_target_dist
-        angle_reward = robot_to_ball_angle_diff / np.pi
+        angle_reward = -(robot_to_ball_angle_diff / np.pi) / self.worker_max_steps
         speed_reward = vel_cos_diff
 
         return dist_reward, angle_reward, speed_reward
@@ -259,13 +274,13 @@ class SSLHierarchicalGoToEnv(SSLBaseEnv):
         worker_done = False
         worker_dist = -worker_dist_reward
         if worker_dist < self.dist_tolerance:
-            print(
-                colorize("Worker reached manager!", "blue", bold=False, highlight=False)
-            )
             worker_done = True
             self.reward_info["reward_worker/sub_objective"] = 1
             self.reward_info["reward_worker/reward_total"] += 1000
             reward["worker"] = 1000
+            print(
+                colorize("Worker reached manager!", "blue", bold=False, highlight=False)
+            )
 
         self._convert_manager_action(action["manager"])
         # Calculate manager reward and manager done condition
@@ -293,13 +308,14 @@ class SSLHierarchicalGoToEnv(SSLBaseEnv):
                 self.reward_info["reward_manager/reward_total"] += 1000
                 reward["manager"] = 1000
 
-        if self.worker_steps >= self.worker_max_steps and not manager_done:
+        if self.worker_steps == self.worker_max_steps and not manager_done:
             print(
                 colorize(
                     "Worker did not reached manager!", "red", bold=True, highlight=False
                 )
             )
             worker_done = True
+        self.worker_steps += 1
         info = deepcopy(self.reward_info)
         if manager_done:
             worker_done = True

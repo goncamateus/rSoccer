@@ -3,7 +3,7 @@ import rsoccer_gym
 import numpy as np
 from rsoccer_gym.ssl.ssl_path_planning import SSLPathPlanningEnv, IncrementalPlanningEnv
 
-env = gym.make("IncrementalPathPlanning-v0")
+env = gym.make("IncrementalPathPlanning-v1")
 for i in range(10):
     env.reset()
     env.render()

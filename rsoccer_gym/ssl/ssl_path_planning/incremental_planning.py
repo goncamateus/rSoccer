@@ -84,5 +84,40 @@ class IncrementalPlanningEnv(SSLPathPlanningEnv):
         # Calculate environment observation, reward and done condition
         observation = self._frame_to_observations()
         reward, done = self._calculate_reward_and_done()
-        self.last_action = action
+        self.last_action = self.actual_action
         return observation, reward, done, {}
+
+
+class ContinuousPath(IncrementalPlanningEnv):
+    def _continuous_reward(self):
+        field_half_length = self.field.length / 2  # x
+        field_half_width = self.field.width / 2  # y
+        
+        robot = self.frame.robots_blue[0]
+        p0 = np.array([robot.x, robot.y])
+
+        if self.last_action is None:
+            p1 = p0
+        else:
+            last_action_x = self.last_action[0] * field_half_length
+            last_action_y = self.last_action[1] * field_half_width
+            p1 = np.array([last_action_x, last_action_y])
+
+        action_x = self.actual_action[0] * field_half_length
+        action_y = self.actual_action[1] * field_half_width
+        p2 = np.array([action_x, action_y])
+
+        v0 = p1 - p0
+        v0 = v0 / np.linalg.norm(v0)
+        
+        v1 = p2 - p1
+        v1 = v1 / np.linalg.norm(v1)
+        
+        cos = np.dot(v0, v1)
+        reward = cos if cos > 0 else -1
+        return reward
+
+    def _calculate_reward_and_done(self):
+        reward, done = super()._calculate_reward_and_done()
+        reward += self._continuous_reward()
+        return reward, done

@@ -100,6 +100,13 @@ register(
 )
 
 register(
+    id="IncrementalPathPlanning-v1",
+    entry_point="rsoccer_gym.ssl.ssl_path_planning:ContinuousPath",
+    kwargs={"field_type": 2, "n_robots_yellow": 0},
+    max_episode_steps=1200,
+)
+
+register(
     id="SSLHierarchical-v0",
     entry_point="rsoccer_gym.ssl.hierarchical_go_to:SSLHierarchicalGoToEnv",
     kwargs={"field_type": 2, "n_obstacles": 0},

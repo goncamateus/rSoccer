@@ -18,9 +18,9 @@ class IncrementalPlanningEnv(SSLPathPlanningEnv):
         robot = self.frame.robots_blue[0]
         field_half_length = self.field.length / 2  # x
         field_half_width = self.field.width / 2  # y
-        target_x = action[0] / 4 + robot.x
+        target_x = action[0] + robot.x
         target_x = np.clip(target_x, -field_half_length, field_half_length)
-        target_y = action[1] / 4 + robot.y
+        target_y = action[1] + robot.y
         target_y = np.clip(target_y, -field_half_width, field_half_width)
         target_angle = np.arctan2(action[2], action[3])
         self.actual_action = np.array(

@@ -108,10 +108,14 @@ class ContinuousPath(IncrementalPlanningEnv):
         p2 = np.array([action_x, action_y])
 
         v0 = p1 - p0
-        v0 = v0 / np.linalg.norm(v0)
+        v0_norm = np.linalg.norm(v0)
+        if v0_norm > 0:
+            v0 = v0 / v0_norm
         
         v1 = p2 - p1
-        v1 = v1 / np.linalg.norm(v1)
+        v1_norm = np.linalg.norm(v1)
+        if v1_norm > 0:
+            v1 = v1 / v1_norm
         
         cos = np.dot(v0, v1)
         reward = cos if cos > 0 else -1

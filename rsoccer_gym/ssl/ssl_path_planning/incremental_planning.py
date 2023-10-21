@@ -118,7 +118,7 @@ class ContinuousPath(IncrementalPlanningEnv):
             v1 = v1 / v1_norm
         
         cos = np.dot(v0, v1)
-        reward = cos if cos > 0 else -1
+        reward = cos if cos > 0 else -3
         return reward
 
     def _calculate_reward_and_done(self):

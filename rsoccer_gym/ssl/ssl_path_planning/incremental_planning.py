@@ -117,8 +117,13 @@ class ContinuousPath(IncrementalPlanningEnv):
         if v1_norm > 0:
             v1 = v1 / v1_norm
         
+        p2_on_edge = False
+        if abs(action_x) - field_half_length < 0.01:
+            p2_on_edge = True
+        if abs(action_y) - field_half_width < 0.01:
+            p2_on_edge = True
         cos = np.dot(v0, v1)
-        reward = cos if cos > 0 else -1
+        reward = cos if cos > 0 and not p2_on_edge else -3
         return reward
 
     def _calculate_reward_and_done(self):

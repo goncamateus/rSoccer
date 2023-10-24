@@ -1,20 +1,11 @@
+import gym
 import numpy as np
 
-from rsoccer_gym.ssl.ssl_path_planning.ssl_path_planning import (
-    ANGLE_TOLERANCE,
-    DIST_TOLERANCE,
-    GoToPointEntryNew,
-    Point2D,
-    Robot,
-    SSLPathPlanningEnv,
-    abs_smallest_angle_diff,
-    dist_to,
-    go_to_point_new,
-)
+from rsoccer_gym.ssl.ssl_path_planning.ssl_path_planning import SSLPathPlanningEnv
 
 
 class IncrementalPlanningEnv(SSLPathPlanningEnv):
-    def _get_commands(self, action):
+    def convert_action_to_target(self, action):
         robot = self.frame.robots_blue[0]
         field_half_length = self.field.length / 2  # x
         field_half_width = self.field.width / 2  # y
@@ -22,8 +13,7 @@ class IncrementalPlanningEnv(SSLPathPlanningEnv):
         target_x = np.clip(target_x, -field_half_length, field_half_length)
         target_y = action[1] + robot.y
         target_y = np.clip(target_y, -field_half_width, field_half_width)
-        target_angle = np.arctan2(action[2], action[3])
-        self.actual_action = np.array(
+        action = np.array(
             [
                 target_x / field_half_length,
                 target_y / field_half_width,
@@ -31,55 +21,22 @@ class IncrementalPlanningEnv(SSLPathPlanningEnv):
                 action[3],
             ]
         )
-        target_vel_x = 0
-        target_vel_y = 0
-        entry: GoToPointEntryNew = GoToPointEntryNew()
-        entry.target = Point2D(target_x, target_y)
-        entry.target_angle = target_angle
-        entry.target_velocity = Point2D(target_vel_x, target_vel_y)
-        angle = np.deg2rad(robot.theta)
-        position = Point2D(x=robot.x, y=robot.y)
-        vel = Point2D(x=robot.v_x, y=robot.v_y)
-        self.view.set_action_target(target_x, target_y)
-        self.view.set_action_angle(np.rad2deg(target_angle))
-        in_distance = dist_to(entry.target, self.target_point) < DIST_TOLERANCE
-        in_angle = (
-            abs_smallest_angle_diff(entry.target_angle, self.target_angle)
-            < ANGLE_TOLERANCE
-        )
-        color = 0
-        if in_distance and in_angle:
-            color = 3
-        elif in_distance:
-            color = 1
-        elif in_angle:
-            color = 2
-        self.view.set_action_color(color)
-
-        result = go_to_point_new(
-            agent_position=position, agent_vel=vel, agent_angle=angle, entry=entry
-        )
-        return [
-            Robot(
-                yellow=False,
-                id=0,
-                v_x=result.velocity.x,
-                v_y=result.velocity.y,
-                v_theta=result.angular_velocity,
-            )
-        ]
+        return action
 
     def step(self, action):
         self.steps += 1
-        # Join agent action with environment actions
-        commands = self._get_commands(action)
-        # Send command to simulator
-        self.rsim.send_commands(commands)
-        self.sent_commands = commands
+        action = self.convert_action_to_target(action)
+        self.actual_action = action
+        for _ in range(4):
+            # Join agent action with environment actions
+            commands = self._get_commands(action)
+            # Send command to simulator
+            self.rsim.send_commands(commands)
+            self.sent_commands = commands
 
-        # Get Frame from simulator
-        self.last_frame = self.frame
-        self.frame = self.rsim.get_frame()
+            # Get Frame from simulator
+            self.last_frame = self.frame
+            self.frame = self.rsim.get_frame()
 
         # Calculate environment observation, reward and done condition
         observation = self._frame_to_observations()
@@ -89,10 +46,31 @@ class IncrementalPlanningEnv(SSLPathPlanningEnv):
 
 
 class ContinuousPath(IncrementalPlanningEnv):
+    def __init__(self, field_type=1, n_robots_yellow=0):
+        super().__init__(field_type, n_robots_yellow)
+        n_obs = 6 + 7 * self.n_robots_blue + 2 * self.n_robots_yellow + 2
+        self.observation_space = gym.spaces.Box(
+            low=-self.NORM_BOUNDS,
+            high=self.NORM_BOUNDS,
+            shape=(n_obs,),
+            dtype=np.float32,
+        )
+
+    def _frame_to_observations(self):
+        observation = super()._frame_to_observations()
+        if self.actual_action is None:
+            normed_action = np.zeros(2)
+            normed_action[0] = self.norm_pos(self.frame.robots_blue[0].x)
+            normed_action[1] = self.norm_pos(self.frame.robots_blue[0].y)
+        else:
+            normed_action = self.norm_pos(self.actual_action[:2])
+        observation = np.concatenate([observation, normed_action])
+        return observation
+
     def _continuous_reward(self):
         field_half_length = self.field.length / 2  # x
         field_half_width = self.field.width / 2  # y
-        
+
         robot = self.frame.robots_blue[0]
         p0 = np.array([robot.x, robot.y])
 
@@ -111,19 +89,20 @@ class ContinuousPath(IncrementalPlanningEnv):
         v0_norm = np.linalg.norm(v0)
         if v0_norm > 0:
             v0 = v0 / v0_norm
-        
+
         v1 = p2 - p1
         v1_norm = np.linalg.norm(v1)
         if v1_norm > 0:
             v1 = v1 / v1_norm
-        
+
         p2_on_edge = False
         if abs(action_x) - field_half_length < 0.01:
             p2_on_edge = True
         if abs(action_y) - field_half_width < 0.01:
             p2_on_edge = True
         cos = np.dot(v0, v1)
-        reward = cos if cos > 0 and not p2_on_edge else -3
+        reward = cos * 10 if cos > 0 else -10
+        reward = reward if not p2_on_edge else -10
         return reward
 
     def _calculate_reward_and_done(self):

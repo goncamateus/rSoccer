@@ -96,9 +96,9 @@ class ContinuousPath(IncrementalPlanningEnv):
             v1 = v1 / v1_norm
 
         p2_on_edge = False
-        if abs(action_x) - field_half_length < 0.01:
+        if abs(abs(action_x) - field_half_length) < 0.01:
             p2_on_edge = True
-        if abs(action_y) - field_half_width < 0.01:
+        if abs(abs(action_y) - field_half_width) < 0.01:
             p2_on_edge = True
         cos = np.dot(v0, v1)
         reward = cos * 10 if cos > 0 else -10

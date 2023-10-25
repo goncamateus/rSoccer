@@ -25,12 +25,11 @@ class IncrementalPlanningEnv(SSLPathPlanningEnv):
         return action
 
     def step(self, action):
-        self.steps += 1
-        action = self.convert_action_to_target(action)
-        self.actual_action = action
+        if self.steps%16==0:
+            self.actual_action = self.convert_action_to_target(action)
         for _ in range(1):
             # Join agent action with environment actions
-            commands = self._get_commands(action)
+            commands = self._get_commands(self.actual_action)
             # Send command to simulator
             self.rsim.send_commands(commands)
             self.sent_commands = commands
@@ -42,7 +41,9 @@ class IncrementalPlanningEnv(SSLPathPlanningEnv):
         # Calculate environment observation, reward and done condition
         observation = self._frame_to_observations()
         reward, done = self._calculate_reward_and_done()
-        self.last_action = self.actual_action
+        if self.steps%16==0:
+            self.last_action = self.actual_action
+        self.steps += 1
         return observation, reward, done, {}
 
 
@@ -119,8 +120,10 @@ class ContinuousPath(IncrementalPlanningEnv):
         return reward, done
 
     def step(self, action):
+        steps = self.steps
         next_state, reward, done, info = super().step(action)
-        self.last_actions.append(self.last_action)        
+        if steps%16==0:
+            self.last_actions.append(self.last_action)        
         return next_state, reward, done, info
     
     def _get_initial_positions_frame(self):

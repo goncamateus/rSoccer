@@ -27,7 +27,7 @@ class IncrementalPlanningEnv(SSLPathPlanningEnv):
         self.steps += 1
         action = self.convert_action_to_target(action)
         self.actual_action = action
-        for _ in range(100):
+        for _ in range(1):
             # Join agent action with environment actions
             commands = self._get_commands(action)
             # Send command to simulator

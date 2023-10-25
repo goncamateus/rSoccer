@@ -1,5 +1,6 @@
 import gym
 import numpy as np
+from collections import deque
 
 from rsoccer_gym.ssl.ssl_path_planning.ssl_path_planning import SSLPathPlanningEnv
 
@@ -55,6 +56,8 @@ class ContinuousPath(IncrementalPlanningEnv):
             shape=(n_obs,),
             dtype=np.float32,
         )
+        self.last_actions = deque([None, None], maxlen=2)
+
 
     def _frame_to_observations(self):
         observation = super()._frame_to_observations()
@@ -72,13 +75,16 @@ class ContinuousPath(IncrementalPlanningEnv):
         field_half_width = self.field.width / 2  # y
 
         robot = self.frame.robots_blue[0]
-        p0 = np.array([robot.x, robot.y])
+        if self.last_actions[0] is None:
+            p0 = np.array([robot.x, robot.y])
+        else:
+            p0 = np.array([self.last_actions[0][0], self.last_actions[0][1]])
 
-        if self.last_action is None:
+        if self.last_actions[1] is None:
             p1 = p0
         else:
-            last_action_x = self.last_action[0] * field_half_length
-            last_action_y = self.last_action[1] * field_half_width
+            last_action_x = self.last_actions[1][0] * field_half_length
+            last_action_y = self.last_actions[1][1] * field_half_width
             p1 = np.array([last_action_x, last_action_y])
 
         action_x = self.actual_action[0] * field_half_length
@@ -111,3 +117,13 @@ class ContinuousPath(IncrementalPlanningEnv):
         reward, done = super()._calculate_reward_and_done()
         reward += self._continuous_reward()
         return reward, done
+
+    def step(self, action):
+        next_state, reward, done, info = super().step(action)
+        self.last_actions.append(self.last_action)        
+        return next_state, reward, done, info
+    
+    def _get_initial_positions_frame(self):
+        pos_frame = super()._get_initial_positions_frame()
+        self.last_actions = deque([None, None], maxlen=2)
+        return pos_frame

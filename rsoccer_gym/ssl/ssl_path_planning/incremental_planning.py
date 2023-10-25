@@ -27,7 +27,7 @@ class IncrementalPlanningEnv(SSLPathPlanningEnv):
         self.steps += 1
         action = self.convert_action_to_target(action)
         self.actual_action = action
-        for _ in range(4):
+        for _ in range(100):
             # Join agent action with environment actions
             commands = self._get_commands(action)
             # Send command to simulator
@@ -101,8 +101,10 @@ class ContinuousPath(IncrementalPlanningEnv):
         if abs(abs(action_y) - field_half_width) < 0.01:
             p2_on_edge = True
         cos = np.dot(v0, v1)
-        reward = cos * 10 if cos > 0 else -10
+        reward = 0 if cos > 0 else 5 * cos
         reward = reward if not p2_on_edge else -10
+        if np.linalg.norm(p2 - self.target_point) < 0.2:
+            reward = 0
         return reward
 
     def _calculate_reward_and_done(self):

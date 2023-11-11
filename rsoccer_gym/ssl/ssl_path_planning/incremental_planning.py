@@ -25,18 +25,16 @@ class IncrementalPlanningEnv(SSLPathPlanningEnv):
         return action
 
     def step(self, action):
-        if self.steps%16==0:
-            self.actual_action = self.convert_action_to_target(action)
-        for _ in range(1):
-            # Join agent action with environment actions
-            commands = self._get_commands(self.actual_action)
-            # Send command to simulator
-            self.rsim.send_commands(commands)
-            self.sent_commands = commands
+        self.actual_action = self.convert_action_to_target(action)
+        # Join agent action with environment actions
+        commands = self._get_commands(self.actual_action)
+        # Send command to simulator
+        self.rsim.send_commands(commands)
+        self.sent_commands = commands
 
-            # Get Frame from simulator
-            self.last_frame = self.frame
-            self.frame = self.rsim.get_frame()
+        # Get Frame from simulator
+        self.last_frame = self.frame
+        self.frame = self.rsim.get_frame()
 
         # Calculate environment observation, reward and done condition
         observation = self._frame_to_observations()

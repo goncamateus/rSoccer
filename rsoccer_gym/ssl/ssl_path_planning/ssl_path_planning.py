@@ -521,5 +521,5 @@ class SSLPathPlanningMediumEnv(SSLPathPlanningEnv):
             std = 1
             exponential = np.exp((-0.5) * (dist / std) ** 2)
             gaussian = exponential / (std * np.sqrt(2 * np.pi))
-            reward -= 13 * np.exp(-dist) * gaussian
+            reward -= gaussian
         return reward

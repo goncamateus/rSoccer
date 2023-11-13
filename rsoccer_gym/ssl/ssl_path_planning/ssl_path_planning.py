@@ -149,7 +149,10 @@ class SSLPathPlanningEnv(SSLBaseEnv):
         self.view.set_action_target(target_x, target_y)
         self.view.set_action_angle(np.rad2deg(target_angle))
         in_distance = dist_to(entry.target, self.target_point) < DIST_TOLERANCE
-        in_angle = abs_smallest_angle_diff(entry.target_angle, self.target_angle) < ANGLE_TOLERANCE
+        in_angle = (
+            abs_smallest_angle_diff(entry.target_angle, self.target_angle)
+            < ANGLE_TOLERANCE
+        )
         color = 0
         if in_distance and in_angle:
             color = 3
@@ -208,7 +211,7 @@ class SSLPathPlanningEnv(SSLBaseEnv):
         action_angle = np.arctan2(self.actual_action[2], self.actual_action[3])
         target = self.target_angle
         angle_diff = abs_smallest_angle_diff(action_angle, target)
-        angle_reward = -angle_diff/ np.pi if angle_diff > ANGLE_TOLERANCE else 1
+        angle_reward = -angle_diff / np.pi if angle_diff > ANGLE_TOLERANCE else 1
         return angle_reward, angle_diff
 
     def _speed_reward(self):
@@ -342,3 +345,181 @@ class SSLPathPlanningEnv(SSLBaseEnv):
         self.last_angle_reward = 0
         self.last_speed_reward = 0
         return pos_frame
+
+
+class SSLPathPlanningMediumEnv(SSLPathPlanningEnv):
+    """The SSL robot needs to reach the target point with a given angle"""
+
+    def __init__(self, n_robots_yellow=1):
+        super().__init__(n_robots_yellow=n_robots_yellow, field_type=2)
+
+    def _frame_to_observations(self):
+        observation = list()
+
+        observation.append(self.norm_pos(self.target_point.x))
+        observation.append(self.norm_pos(self.target_point.y))
+        observation.append(np.sin(self.target_angle))
+        observation.append(np.cos(self.target_angle))
+        observation.append(self.norm_v(self.target_velocity.x))
+        observation.append(self.norm_v(self.target_velocity.y))
+
+        observation.append(self.norm_pos(self.frame.robots_blue[0].x))
+        observation.append(self.norm_pos(self.frame.robots_blue[0].y))
+        observation.append(np.sin(np.deg2rad(self.frame.robots_blue[0].theta)))
+        observation.append(np.cos(np.deg2rad(self.frame.robots_blue[0].theta)))
+        observation.append(self.norm_v(self.frame.robots_blue[0].v_x))
+        observation.append(self.norm_v(self.frame.robots_blue[0].v_y))
+        observation.append(self.norm_w(self.frame.robots_blue[0].v_theta))
+
+        for i in range(self.n_robots_yellow):
+            observation.append(self.norm_pos(self.frame.robots_yellow[i].x))
+            observation.append(self.norm_pos(self.frame.robots_yellow[i].y))
+
+        return np.array(observation, dtype=np.float32)
+
+    def _get_initial_positions_frame(self):
+        field_half_length = self.field.length / 2
+        field_half_width = self.field.width / 2
+
+        def get_random_x():
+            return random.uniform(-field_half_length + 0.1, field_half_length - 0.1)
+
+        def get_random_y():
+            return random.uniform(-field_half_width + 0.1, field_half_width - 0.1)
+
+        def get_random_theta():
+            return random.uniform(0, 360)
+
+        def get_random_speed():
+            return random.uniform(0, self.max_v)
+
+        pos_frame: Frame = Frame()
+
+        self.target_point = Point2D(x=get_random_x(), y=get_random_y())
+        self.target_angle = np.deg2rad(get_random_theta())
+        pos_frame.ball = Ball(x=self.target_point.x, y=self.target_point.y)
+
+        random_speed: float = 0
+        random_velocity_direction: float = np.deg2rad(get_random_theta())
+        self.target_velocity = Point2D(
+            x=random_speed * np.cos(random_velocity_direction),
+            y=random_speed * np.sin(random_velocity_direction),
+        )
+
+        # Adjust speed tolerance according to target velocity
+        target_speed_norm = np.sqrt(
+            self.target_velocity.x**2 + self.target_velocity.y**2
+        )
+        self.SPEED_TOLERANCE = (
+            SPEED_MIN_TOLERANCE
+            + (SPEED_MAX_TOLERANCE - SPEED_MIN_TOLERANCE)
+            * target_speed_norm
+            / self.max_v
+        )
+
+        #  TODO: Move RCGymRender to another place
+        self.view = RCGymRender(
+            self.n_robots_blue,
+            self.n_robots_yellow,
+            self.field,
+            simulator="ssl",
+            angle_tolerance=ANGLE_TOLERANCE,
+        )
+
+        self.view.set_target(self.target_point.x, self.target_point.y)
+        self.view.set_target_angle(np.rad2deg(self.target_angle))
+
+        min_gen_dist = 1
+
+        places = KDTree()
+        places.insert((pos_frame.ball.x, pos_frame.ball.y))
+
+        # Agent
+        pos = (get_random_x(), get_random_y())
+        while places.get_nearest(pos)[1] < min_gen_dist:
+            pos = (get_random_x(), get_random_y())
+        places.insert(pos)
+        pos_frame.robots_blue[0] = Robot(
+            id=0, yellow=False, x=pos[0], y=pos[1], theta=get_random_theta()
+        )
+
+        # Obstacles
+        is_random_obstacles = random.random() < 0.5
+        if is_random_obstacles:
+            for i in range(self.n_robots_yellow):
+                pos = (get_random_x(), get_random_y())
+                while places.get_nearest(pos)[1] < min_gen_dist:
+                    pos = (get_random_x(), get_random_y())
+
+                places.insert(pos)
+                pos_frame.robots_yellow[i] = Robot(
+                    id=i, yellow=True, x=pos[0], y=pos[1], theta=get_random_theta()
+                )
+        else:
+            agent_pos = np.array(
+                (pos_frame.robots_blue[0].x, pos_frame.robots_blue[0].y)
+            )
+            ball_pos = np.array((pos_frame.ball.x, pos_frame.ball.y))
+            middle_pos = (agent_pos + ball_pos) / 2
+            pos_frame.robots_yellow[0] = Robot(
+                id=0,
+                yellow=True,
+                x=middle_pos[0],
+                y=middle_pos[1],
+                theta=get_random_theta(),
+            )
+
+        self.last_action = None
+        self.last_dist_reward = 0
+        self.last_angle_reward = 0
+        self.last_speed_reward = 0
+        return pos_frame
+
+    def _calculate_reward_and_done(self):
+        reward, done = super()._calculate_reward_and_done()
+        reward += self._obstacle_reward()
+        if self._check_collision():
+            done = True
+            reward = -1000
+        return reward, done
+
+    def _check_collision(self):
+        for i in range(len(self.frame.robots_yellow)):
+            obstacle_pos = np.array(
+                [
+                    self.frame.robots_yellow[i].x,
+                    self.frame.robots_yellow[i].y,
+                ]
+            )
+            agent_pos = np.array(
+                (
+                    self.frame.robots_blue[0].x,
+                    self.frame.robots_blue[0].y,
+                )
+            )
+            dist = np.linalg.norm(agent_pos - obstacle_pos)
+            if dist < 0.2:
+                return True
+        return False
+
+    def _obstacle_reward(self):
+        reward = 0
+        agent_pos = np.array(
+            (
+                self.frame.robots_blue[0].x,
+                self.frame.robots_blue[0].y,
+            )
+        )
+        for i in range(len(self.frame.robots_yellow)):
+            obstacle_pos = np.array(
+                [
+                    self.frame.robots_yellow[i].x,
+                    self.frame.robots_yellow[i].y,
+                ]
+            )
+            dist = np.linalg.norm(agent_pos - obstacle_pos)
+            std = 1
+            exponential = np.exp((-0.5) * (dist / std) ** 2)
+            gaussian = exponential / (std * np.sqrt(2 * np.pi))
+            reward -= 13 * np.exp(-dist) * gaussian
+        return reward

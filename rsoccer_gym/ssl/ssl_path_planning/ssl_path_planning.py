@@ -523,3 +523,24 @@ class SSLPathPlanningMediumEnv(SSLPathPlanningEnv):
             gaussian = exponential / (std * np.sqrt(2 * np.pi))
             reward -= gaussian
         return reward
+
+    def step(self, action):
+        self.actual_action = action
+        self.steps += 1
+        for _ in range(16):
+            # Join agent action with environment actions
+            commands: List[Robot] = self._get_commands(action)
+            # Send command to simulator
+            self.rsim.send_commands(commands)
+            self.sent_commands = commands
+
+            # Get Frame from simulator
+            self.last_frame = self.frame
+            self.frame = self.rsim.get_frame()
+
+        # Calculate environment observation, reward and done condition
+        observation = self._frame_to_observations()
+        reward, done = self._calculate_reward_and_done()
+        self.last_action = action
+
+        return observation, reward, done, {}

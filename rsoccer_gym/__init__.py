@@ -117,5 +117,5 @@ register(
     id="SSLPathPlanningMedium-v0",
     entry_point="rsoccer_gym.ssl.ssl_path_planning:SSLPathPlanningMediumEnv",
     kwargs={"n_robots_yellow": 1},
-    max_episode_steps=1200,
+    max_episode_steps=75,
 )

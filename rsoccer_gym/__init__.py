@@ -88,8 +88,15 @@ register(
 register(
     id="SSLPathPlanning-v1",
     entry_point="rsoccer_gym.ssl.ssl_path_planning:SSLPathPlanningEnv",
-    kwargs={"field_type": 2, "n_robots_yellow": 0},
+    kwargs={"field_type": 2, "n_robots_yellow": 0, "repeat_action": 1},
     max_episode_steps=1200,
+)
+
+register(
+    id="SSLPathPlanning-v2",
+    entry_point="rsoccer_gym.ssl.ssl_path_planning:SSLPathPlanningEnv",
+    kwargs={"field_type": 2, "n_robots_yellow": 0, "repeat_action": 16},
+    max_episode_steps=75,
 )
 
 register(

@@ -60,6 +60,7 @@ class SSLPathPlanningEnv(SSLBaseEnv):
         self,
         field_type=1,
         n_robots_yellow=0,
+        repeat_action=1,
     ):
         super().__init__(
             field_type=field_type,
@@ -95,17 +96,15 @@ class SSLPathPlanningEnv(SSLBaseEnv):
         self.last_speed_reward = 0
 
         self.reward_info = {
-            "cumulative_dist_reward": 0,
-            "cumulative_angle_reward": 0,
-            "cumulative_velocity_reward": 0,
-            "total_reward": 0,
-            "dist_error": 0,
-            "angle_error": 0,
-            "velocity_error": 0,
-            "current_speed": 0,
-            "current_velocity_x": 0,
-            "current_velocity_y": 0,
+            "reward_dist": 0,
+            "reward_angle": 0,
+            "reward_action_var": 0,
+            "reward_objective": 0,
+            "reward_total": 0,
+            "reward_steps": 0,
         }
+        self.all_actions = []
+        self.repeat_action = repeat_action
 
         print("Environment initialized")
 
@@ -139,6 +138,9 @@ class SSLPathPlanningEnv(SSLBaseEnv):
         target_angle = np.arctan2(action[2], action[3])
         target_vel_x = 0
         target_vel_y = 0
+
+        self.all_actions.append((target_x, target_y))
+
         entry: GoToPointEntryNew = GoToPointEntryNew()
         entry.target = Point2D(target_x, target_y)
         entry.target_angle = target_angle
@@ -180,23 +182,24 @@ class SSLPathPlanningEnv(SSLBaseEnv):
 
     def step(self, action):
         self.actual_action = action
-        self.steps += 1
-        # Join agent action with environment actions
-        commands: List[Robot] = self._get_commands(action)
-        # Send command to simulator
-        self.rsim.send_commands(commands)
-        self.sent_commands = commands
+        for _ in range(self.repeat_action):
+            self.steps += 1
+            # Join agent action with environment actions
+            commands: List[Robot] = self._get_commands(action)
+            # Send command to simulator
+            self.rsim.send_commands(commands)
+            self.sent_commands = commands
 
-        # Get Frame from simulator
-        self.last_frame = self.frame
-        self.frame = self.rsim.get_frame()
+            # Get Frame from simulator
+            self.last_frame = self.frame
+            self.frame = self.rsim.get_frame()
 
         # Calculate environment observation, reward and done condition
         observation = self._frame_to_observations()
         reward, done = self._calculate_reward_and_done()
         self.last_action = action
 
-        return observation, reward, done, {}
+        return observation, reward, done, self.reward_info
 
     def _dist_reward(self):
         action_target_x = self.actual_action[0] * self.field.length / 2
@@ -230,7 +233,6 @@ class SSLPathPlanningEnv(SSLBaseEnv):
         reward = 0
         dist_reward, distance = self._dist_reward()
         angle_reward, angle_diff = self._angle_reward()
-        # speed_reward = self._speed_reward()
         robot_dist = np.linalg.norm(
             np.array(
                 [
@@ -247,7 +249,7 @@ class SSLPathPlanningEnv(SSLBaseEnv):
                 ]
             )
         )
-        # print(f"dist_reward: {distance < DIST_TOLERANCE} | robot_dist: {robot_dist < DIST_TOLERANCE} | angle: {angle_reward < ANGLE_TOLERANCE} | vel: {robot_vel_error < self.SPEED_TOLERANCE}")
+
         if (
             distance < DIST_TOLERANCE
             and angle_diff < ANGLE_TOLERANCE
@@ -256,9 +258,26 @@ class SSLPathPlanningEnv(SSLBaseEnv):
         ):
             done = True
             reward = 1000
+            self.reward_info["reward_objective"] += reward
             print(colorize("GOAL!", "green", bold=True, highlight=True))
         else:
             reward = dist_reward + angle_reward
+
+        if done or self.steps >= 1200:
+            # pairwise distance between all actions
+            action_var = 0
+            for i in range(len(self.all_actions)):
+                for j in range(i + 1, len(self.all_actions)):
+                    action_var += np.linalg.norm(
+                        np.array(self.all_actions[i]) - np.array(self.all_actions[j])
+                    )
+            self.reward_info["reward_action_var"] = action_var
+
+        self.reward_info["reward_dist"] += dist_reward
+        self.reward_info["reward_angle"] += angle_reward
+        self.reward_info["reward_total"] += reward
+        self.reward_info["reward_steps"] = self.steps
+
         return reward, done
 
     def _get_initial_positions_frame(self):
@@ -344,6 +363,15 @@ class SSLPathPlanningEnv(SSLBaseEnv):
         self.last_dist_reward = 0
         self.last_angle_reward = 0
         self.last_speed_reward = 0
+        self.all_actions = []
+        self.reward_info = {
+            "reward_dist": 0,
+            "reward_angle": 0,
+            "reward_action_var": 0,
+            "reward_objective": 0,
+            "reward_total": 0,
+            "reward_steps": 0,
+        }
         return pos_frame
 
 

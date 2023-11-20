@@ -95,17 +95,14 @@ class SSLPathPlanningBaseLineEnv(SSLBaseEnv):
         self.last_speed_reward = 0
 
         self.reward_info = {
-            "cumulative_dist_reward": 0,
-            "cumulative_angle_reward": 0,
-            "cumulative_velocity_reward": 0,
-            "total_reward": 0,
-            "dist_error": 0,
-            "angle_error": 0,
-            "velocity_error": 0,
-            "current_speed": 0,
-            "current_velocity_x": 0,
-            "current_velocity_y": 0,
+            "reward_dist": 0,
+            "reward_angle": 0,
+            "reward_action_var": 0,
+            "reward_objective": 0,
+            "reward_total": 0,
+            "reward_steps": 0,
         }
+        self.all_actions = []
 
         print("Environment initialized")
 
@@ -139,6 +136,9 @@ class SSLPathPlanningBaseLineEnv(SSLBaseEnv):
         target_angle = np.arctan2(action[2], action[3])
         target_vel_x = 0
         target_vel_y = 0
+
+        self.all_actions.append((target_x, target_y))
+
         entry: GoToPointEntryNew = GoToPointEntryNew()
         entry.target = Point2D(target_x, target_y)
         entry.target_angle = target_angle
@@ -149,7 +149,10 @@ class SSLPathPlanningBaseLineEnv(SSLBaseEnv):
         self.view.set_action_target(target_x, target_y)
         self.view.set_action_angle(np.rad2deg(target_angle))
         in_distance = dist_to(entry.target, self.target_point) < DIST_TOLERANCE
-        in_angle = abs_smallest_angle_diff(entry.target_angle, self.target_angle) < ANGLE_TOLERANCE
+        in_angle = (
+            abs_smallest_angle_diff(entry.target_angle, self.target_angle)
+            < ANGLE_TOLERANCE
+        )
         color = 0
         if in_distance and in_angle:
             color = 3
@@ -193,17 +196,17 @@ class SSLPathPlanningBaseLineEnv(SSLBaseEnv):
         reward, done = self._calculate_reward_and_done()
         self.last_action = action
 
-        return observation, reward, done, {}
+        return observation, reward, done, self.reward_info
 
     def _dist_reward(self):
-        robot = self.frame.robots_blue[0]       
+        robot = self.frame.robots_blue[0]
         robot = Point2D(x=robot.x, y=robot.y)
         actual_dist = dist_to(robot, self.target_point)
         reward = -actual_dist if actual_dist > DIST_TOLERANCE else 10
         return reward, actual_dist
 
     def _angle_reward(self):
-        robot = self.frame.robots_blue[0]       
+        robot = self.frame.robots_blue[0]
         robot_angle = np.deg2rad(robot.theta)
         target = self.target_angle
         angle_diff = abs_smallest_angle_diff(robot_angle, target)
@@ -242,9 +245,26 @@ class SSLPathPlanningBaseLineEnv(SSLBaseEnv):
         ):
             done = True
             reward = 1000
+            self.reward_info["reward_objective"] += reward
             print(colorize("GOAL!", "green", bold=True, highlight=True))
         else:
             reward = dist_reward + angle_reward
+
+        if done or self.steps >= 1200:
+            # pairwise distance between all actions
+            action_var = 0
+            for i in range(len(self.all_actions)):
+                for j in range(i + 1, len(self.all_actions)):
+                    action_var += np.linalg.norm(
+                        np.array(self.all_actions[i]) - np.array(self.all_actions[j])
+                    )
+            self.reward_info["reward_action_var"] = action_var
+
+        self.reward_info["reward_dist"] += dist_reward
+        self.reward_info["reward_angle"] += angle_reward
+        self.reward_info["reward_total"] += reward
+        self.reward_info["reward_steps"] = self.steps
+
         return reward, done
 
     def _get_initial_positions_frame(self):
@@ -330,4 +350,13 @@ class SSLPathPlanningBaseLineEnv(SSLBaseEnv):
         self.last_dist_reward = 0
         self.last_angle_reward = 0
         self.last_speed_reward = 0
+        self.all_actions = []
+        self.reward_info = {
+            "reward_dist": 0,
+            "reward_angle": 0,
+            "reward_action_var": 0,
+            "reward_objective": 0,
+            "reward_total": 0,
+            "reward_steps": 0,
+        }
         return pos_frame

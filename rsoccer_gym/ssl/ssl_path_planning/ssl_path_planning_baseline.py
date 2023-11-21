@@ -3,9 +3,10 @@ from typing import List
 
 import gym
 import numpy as np
+import pygame
 
 from rsoccer_gym.Entities import Ball, Frame, Robot
-from rsoccer_gym.Render.Render import RCGymRender
+from rsoccer_gym.Render.utils import COLORS
 from rsoccer_gym.ssl.ssl_gym_base import SSLBaseEnv
 from rsoccer_gym.ssl.ssl_path_planning.navigation import *
 from rsoccer_gym.Utils import KDTree
@@ -103,6 +104,8 @@ class SSLPathPlanningBaseLineEnv(SSLBaseEnv):
             "reward_steps": 0,
         }
         self.all_actions = []
+        self.action_color = COLORS["PINK"]
+        self.robot_path = []
 
         print("Environment initialized")
 
@@ -146,21 +149,18 @@ class SSLPathPlanningBaseLineEnv(SSLBaseEnv):
         angle = np.deg2rad(robot.theta)
         position = Point2D(x=robot.x, y=robot.y)
         vel = Point2D(x=robot.v_x, y=robot.v_y)
-        self.view.set_action_target(target_x, target_y)
-        self.view.set_action_angle(np.rad2deg(target_angle))
         in_distance = dist_to(entry.target, self.target_point) < DIST_TOLERANCE
         in_angle = (
             abs_smallest_angle_diff(entry.target_angle, self.target_angle)
             < ANGLE_TOLERANCE
         )
-        color = 0
+        self.action_color = COLORS["PINK"]
         if in_distance and in_angle:
-            color = 3
+            self.action_color = COLORS["ORANGE"]
         elif in_distance:
-            color = 1
+            self.action_color = COLORS["BLUE"]
         elif in_angle:
-            color = 2
-        self.view.set_action_color(color)
+            self.action_color = COLORS["GREEN"]
 
         result = go_to_point_new(
             agent_position=position, agent_vel=vel, agent_angle=angle, entry=entry
@@ -190,7 +190,9 @@ class SSLPathPlanningBaseLineEnv(SSLBaseEnv):
         # Get Frame from simulator
         self.last_frame = self.frame
         self.frame = self.rsim.get_frame()
-
+        self.robot_path.append(
+            (self.frame.robots_blue[0].x, self.frame.robots_blue[0].y)
+        )
         # Calculate environment observation, reward and done condition
         observation = self._frame_to_observations()
         reward, done = self._calculate_reward_and_done()
@@ -308,18 +310,6 @@ class SSLPathPlanningBaseLineEnv(SSLBaseEnv):
             / self.max_v
         )
 
-        #  TODO: Move RCGymRender to another place
-        self.view = RCGymRender(
-            self.n_robots_blue,
-            self.n_robots_yellow,
-            self.field,
-            simulator="ssl",
-            angle_tolerance=ANGLE_TOLERANCE,
-        )
-
-        self.view.set_target(self.target_point.x, self.target_point.y)
-        self.view.set_target_angle(np.rad2deg(self.target_angle))
-
         min_gen_dist = 0.2
 
         places = KDTree()
@@ -359,4 +349,54 @@ class SSLPathPlanningBaseLineEnv(SSLBaseEnv):
             "reward_total": 0,
             "reward_steps": 0,
         }
+        self.robot_path = [(pos_frame.robots_blue[0].x, pos_frame.robots_blue[0].y)] * 2
         return pos_frame
+
+    def draw_target(self, screen, transformer, point, angle, color):
+        x, y = transformer(point.x, point.y)
+        size = 0.09 * self.field_renderer.scale
+        pygame.draw.circle(screen, color, (x, y), size, 5)
+        pygame.draw.line(
+            screen,
+            COLORS["BLACK"],
+            (x, y),
+            (
+                x + size * np.cos(angle),
+                y + size * np.sin(angle),
+            ),
+            2,
+        )
+
+    def _render(self):
+        def pos_transform(pos_x, pos_y):
+            return (
+                int(pos_x * self.field_renderer.scale + self.field_renderer.center_x),
+                int(pos_y * self.field_renderer.scale + self.field_renderer.center_y),
+            )
+
+        super()._render()
+        self.draw_target(
+            self.window_surface,
+            pos_transform,
+            self.target_point,
+            self.target_angle,
+            COLORS["ORANGE"],
+        )
+        # Draw action
+        field_half_length = self.field.length / 2  # x
+        field_half_width = self.field.width / 2  # y
+        if self.actual_action is not None:
+            pos_x = self.actual_action[0] * field_half_length
+            pos_y = self.actual_action[1] * field_half_width
+            target_angle = np.arctan2(self.actual_action[2], self.actual_action[3])
+            pos = Point2D(x=pos_x, y=pos_y)
+            self.draw_target(
+                self.window_surface,
+                pos_transform,
+                pos,
+                target_angle,
+                self.action_color,
+            )
+        # Draw path
+        my_path = [pos_transform(*p) for p in self.robot_path]
+        pygame.draw.lines(self.window_surface, COLORS["RED"], False, my_path, 1)
